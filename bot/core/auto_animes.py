@@ -207,11 +207,11 @@ async def get_animes(name, torrent, force=False):
             await rep.report("Starting Subtitle Extraction...", "info")
 
             # Temporary subtitle paths
-            from os import path as ospath
             import subprocess
             from bot.utils.translator import translate_subtitle_file
+            import time as t
 
-            sub_path = ospath.join("encode", "temp_sub_extract.ass")
+            sub_path = ospath.join("encode", f"temp_sub_extract_{t.time()}.ass")
             translated_sub_path = None
 
             # Extract .ass subtitles

@@ -1446,6 +1446,23 @@ async def set_groq_api_handler(client, message):
     await message.reply_text("✅ Groq API Key added to the global pool successfully!")
 
 
+@bot.on_message(filters.command("view_api") & filters.private & filters.user(Var.OWNER_ID))
+async def view_api_handler(client, message):
+    pool = await db.get_groq_api_pool(message.from_user.id)
+    if not pool:
+        return await message.reply_text("❌ No Groq API keys are currently set.")
+
+    response = f"✅ Total Keys: {len(pool)}/15\n\n"
+    for idx, key in enumerate(pool, start=1):
+        if len(key) > 8:
+            masked_key = f"{key[:4]}*******{key[-4:]}"
+        else:
+            masked_key = "****"
+        response += f"**{idx}.** `{masked_key}`\n"
+
+    await message.reply_text(response)
+
+
 # List all anime-channel mappings
 @bot.on_message(filters.command("listchannels") & filters.user(Var.OWNER_ID))
 async def list_all_channels(client, message):
