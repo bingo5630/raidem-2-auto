@@ -510,6 +510,38 @@ class MongoDB:
     async def task_exists(self, title: str) -> bool:
         return await self.tasks.find_one({"title": title}) is not None
 
+    # === GROQ API KEYS MANAGEMENT ===
+    async def add_groq_api_key(self, user_id: int, api_key: str):
+        """Add a Groq API key to the global pool. Keep maximum of 15 keys."""
+        # Using a fixed ID for the global pool
+        pool_id = "global_groq_pool"
+        await self.user_data.update_one(
+            {"_id": pool_id},
+            {"$addToSet": {"keys": api_key}},
+            upsert=True
+        )
+        # Enforce max 15 keys
+        data = await self.user_data.find_one({"_id": pool_id})
+        if data and len(data.get("keys", [])) > 15:
+            await self.user_data.update_one(
+                {"_id": pool_id},
+                {"$pop": {"keys": -1}} # Remove the first/oldest key
+            )
+
+    async def get_groq_api_pool(self, user_id: int) -> list:
+        """Get the global pool of Groq API keys."""
+        pool_id = "global_groq_pool"
+        data = await self.user_data.find_one({"_id": pool_id})
+        return data.get("keys", []) if data else []
+
+    async def clear_groq_api_pool(self, user_id: int):
+        """Clear all Groq API keys from the global pool."""
+        pool_id = "global_groq_pool"
+        await self.user_data.update_one(
+            {"_id": pool_id},
+            {"$set": {"keys": []}}
+        )
+
     async def get_shortner_settings(self):
         data = await self.shortner_data.find_one({"_id": "shortner_settings"})
         if not data:

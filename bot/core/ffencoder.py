@@ -53,7 +53,7 @@ if not ospath.exists("encode"):
 
 
 class FFEncoder:
-    def __init__(self, message, path, name, qual):
+    def __init__(self, message, path, name, qual, is_master=False, sub_path=None):
         # why: keep state
         self.__proc = None
         self.is_cancelled = False
@@ -65,6 +65,8 @@ class FFEncoder:
         self.out_path = ospath.join("encode", name)
         self.__prog_file = 'prog.txt'
         self.__start_time = time()
+        self.is_master = is_master
+        self.sub_path = sub_path
 
     async def progress(self):
         # why: report progress using ffmpeg -progress output
@@ -181,7 +183,8 @@ class FFEncoder:
         except Exception:
             # if rename failed (maybe same path), try copy fallback via shell
             try:
-                subprocess.run(["cp", video_file, dl_npath], check=True)
+                import shutil
+                shutil.copy2(video_file, dl_npath)
             except Exception:
                 LOGS.exception("Failed to move/copy input file")
                 raise
@@ -190,58 +193,65 @@ class FFEncoder:
         is_hdrip = any(term.lower() in (self.__name or "").lower() for term in ("hdrip", "hdri"))
 
         watermark = None
-        if not is_hdrip:
-            wm = await db.get_watermark()
-            if wm and (wm.startswith("http://") or wm.startswith("https://")):
-                local_wm = await self.download_watermark(wm)
-                watermark = local_wm if local_wm else None
+        wm = await db.get_watermark()
+        if wm and (wm.startswith("http://") or wm.startswith("https://")):
+            local_wm = await self.download_watermark(wm)
+            watermark = local_wm if local_wm else None
 
         # Build base ffmpeg command
         ffcode = f"ffmpeg -hide_banner -loglevel error -progress '{self.__prog_file}' -y -i '{dl_npath}'"
 
-        if is_hdrip:
-            # Map ALL streams from input 0 and copy to output so audio & subtitles are preserved.
-            # Keep metadata additions; place map & codec before metadata/options to ensure mapping preserved.
-            ffcode = (
-                f"ffmpeg -hide_banner -loglevel error -progress '{self.__prog_file}' -y -i '{dl_npath}' "
-                "-map 0 -c copy "
-                "-metadata title='By Anime Raven' "
-                "-metadata author='By Anime Raven' "
-                "-metadata:s:s title='By Anime Raven' "
-                "-metadata:s:a title='By Anime Raven' "
-                "-metadata:s:v title='By Anime Raven' "
-                f"'{out_npath}'"
-            )
-        else:
-            # non-HDRi encoding path
+        if self.is_master:
+            # For the master (1080p), apply both watermark and translated subtitles.
+            subtitle_filter = ""
+            if self.sub_path and ospath.exists(self.sub_path):
+                # Use AHS BestFont styling
+                fontsdir = ospath.abspath(ospath.join("bot", "utils"))
+                # Copy subtitle file to temp dir to avoid path issues
+                import time as t
+                temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
+                # Need to use safe subprocess call since we are in async flow but don't want to use await here easily.
+                # However, since this runs before the shell command, we can just use shutil
+                import shutil
+                shutil.copy2(self.sub_path, temp_sub_path)
+                force_style = "FontName=AHS BestFont,FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,Bold=0,Italic=0,Outline=1,Shadow=1,MarginV=20,Alignment=2"
+                subtitle_filter = f",ass='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
+
             if watermark and ospath.exists(watermark):
-                # second input for watermark
                 ffcode += f" -i '{watermark}'"
-                # scale watermark to base size then overlay full screen
-                # note: [1:v] is watermark, [0:v] is base
                 ffcode += (
-                    " -filter_complex \"[1:v][0:v]scale2ref=w=iw:h=ih[wm][base];[base][wm]overlay=0:0\" "
-                    "-map 0:a -map 0:s? -map 0:v"
+                    f" -filter_complex \"[1:v][0:v]scale2ref=w=iw:h=ih[wm][base];[base][wm]overlay=0:0{subtitle_filter}\" "
+                    "-map 0:a -map 0:v"
                 )
-                # Use codec flags from ffargs (we expect ffargs to include video encoding)
-                ffcode += f" {ffargs[self.__qual]} "
-            elif scale_values.get(self.__qual):
-                ffcode += f" -vf '{scale_values[self.__qual]}:flags=fast_bilinear' -map 0:v -map 0:a -map 0:s?"
                 ffcode += f" {ffargs[self.__qual]} "
             else:
-                ffcode += " -map 0:v -map 0:a -map 0:s? "
+                if subtitle_filter:
+                    # Strip leading comma if there's no watermark filter complex
+                    subtitle_filter_str = subtitle_filter[1:]
+                    ffcode += f" -vf \"{subtitle_filter_str}\" -map 0:v -map 0:a"
+                else:
+                    ffcode += " -map 0:v -map 0:a -map 0:s?"
+                ffcode += f" {ffargs[self.__qual]} "
+        else:
+            # For compressed versions (720p, 480p), the master is the input.
+            # Scale down the video without reapplying watermark/subtitles.
+            if scale_values.get(self.__qual):
+                ffcode += f" -vf '{scale_values[self.__qual]}:flags=fast_bilinear' -map 0:v -map 0:a"
+                ffcode += f" {ffargs[self.__qual]} "
+            else:
+                ffcode += " -map 0:v -map 0:a"
                 ffcode += f" {ffargs[self.__qual]} "
 
-            # global metadata
-            ffcode += (
-                "-metadata title='By Anime Raven' "
-                "-metadata author='By Anime Raven' "
-                "-metadata:s:s title='By Anime Raven' "
-                "-metadata:s:a title='By Anime Raven' "
-                "-metadata:s:v title='By Anime Raven' "
-            )
+        # global metadata
+        ffcode += (
+            " -metadata title='By Anime Raven' "
+            "-metadata author='By Anime Raven' "
+            "-metadata:s:s title='By Anime Raven' "
+            "-metadata:s:a title='By Anime Raven' "
+            "-metadata:s:v title='By Anime Raven' "
+        )
 
-            ffcode += f" '{out_npath}'"
+        ffcode += f" '{out_npath}'"
 
         LOGS.info(f'FFCode: {ffcode}')
 
@@ -291,7 +301,8 @@ class FFEncoder:
                 LOGS.exception("Failed to move output to final path")
                 # attempt copy fallback
                 try:
-                    subprocess.run(["cp", out_npath, self.out_path], check=True)
+                    import shutil
+                    shutil.copy2(out_npath, self.out_path)
                 except Exception:
                     LOGS.exception("Failed fallback copy of output")
                     return None
