@@ -1437,6 +1437,15 @@ async def handle_invite_command(client, message):
 
 
 
+@bot.on_message(filters.command("set_groq_api") & filters.private & filters.user(Var.OWNER_ID))
+async def set_groq_api_handler(client, message):
+    if len(message.command) < 2:
+        return await message.reply_text("❌ Usage: `/set_groq_api <YOUR_API_KEY>`")
+    api_key = message.command[1].strip()
+    await db.add_groq_api_key(message.from_user.id, api_key)
+    await message.reply_text("✅ Groq API Key added to the global pool successfully!")
+
+
 # List all anime-channel mappings
 @bot.on_message(filters.command("listchannels") & filters.user(Var.OWNER_ID))
 async def list_all_channels(client, message):

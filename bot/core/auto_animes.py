@@ -119,12 +119,12 @@ async def get_animes(name, torrent, force=False):
         channel_id = await db.get_anime_channel(anime_title)
         poster = await db.get_anime_poster(anime_title)
         if not channel_id:
-            channel_id = Var.MAIN_CHANNEL
             ani_cache.setdefault("unmapped", set())
             if anime_title not in ani_cache["unmapped"]:
                 await log_unmapped_anime(anime_title)
                 ani_cache["unmapped"].add(anime_title)
-            channel_id = await db.get_main_channel() or Var.MAIN_CHANNEL
+            # Ignore the torrent if no mapped channel_id is found
+            return
 
         if ani_id not in ani_cache['ongoing']:
             ani_cache['ongoing'].add(ani_id)
@@ -198,73 +198,130 @@ async def get_animes(name, torrent, force=False):
             await ffEvent.wait()
             await ffLock.acquire()
 
-            btns = []
-            for qual in Var.QUALS:
+            # Phase 1: Subtitle Extraction & Translation
+            await safe_telegram_call(
+                editMessage,
+                stat_msg,
+                f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n<i>Extracting & Translating Subtitles...</i>"
+            )
+            await rep.report("Starting Subtitle Extraction...", "info")
+
+            # Temporary subtitle paths
+            from os import path as ospath
+            import subprocess
+            from bot.utils.translator import translate_subtitle_file
+
+            sub_path = ospath.join("encode", "temp_sub_extract.ass")
+            translated_sub_path = None
+
+            # Extract .ass subtitles
+            dl_file = dl
+            if ospath.isdir(dl):
+                import glob
+                files = glob.glob(ospath.join(dl, "*.mkv")) + glob.glob(ospath.join(dl, "*.mp4"))
+                if files: dl_file = files[0]
+
+            proc = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-i", dl_file, "-map", "0:s:0?", sub_path)
+            await proc.wait()
+
+            # Get Groq API Keys for translation
+            bot_user_id = (await get_bot_username()) # Assuming owner set it up, ideally we pass a valid user ID or system default
+            api_pool = await db.get_groq_api_pool("global_groq_pool") # Using the fixed pool ID
+
+            if ospath.exists(sub_path):
+                translated_sub_path = await translate_subtitle_file(sub_path, api_pool)
+            else:
+                await rep.report("No Subtitles Found or Extraction Failed.", "warning")
+
+            uploaded_links = {}
+
+            # Phase 2: Sequential Master Encode (1080p), Compress (720p, 480p) & Upload
+            encoding_flow = [
+                {'qual': '1080', 'is_master': True},
+                {'qual': '720', 'is_master': False},
+                {'qual': '480', 'is_master': False}
+            ]
+
+            master_dl_path = dl_file
+            out_paths = {}
+
+            for step in encoding_flow:
+                qual = step['qual']
+                is_master = step['is_master']
+
                 filename = await aniInfo.get_upname(qual)
                 await safe_telegram_call(
                     editMessage,
                     stat_msg,
-                    f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n<i>Ready to Encode...</i>"
+                    f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n<i>Encoding {qual}p...</i>"
                 )
                 await asyncio.sleep(1.5)
-                await rep.report("Starting Encode...", "info")
+                await rep.report(f"Starting Encode for {qual}p...", "info")
 
                 try:
-                    encoder = FFEncoder(stat_msg, dl, filename, qual)
+                    # If it's a compressed version, we encode from the newly created 1080p master file
+                    input_file = out_paths.get('1080') if not is_master else dl
+
+                    encoder = FFEncoder(stat_msg, input_file, filename, qual, is_master=is_master, sub_path=translated_sub_path)
                     out_path = await encoder.start_encode()
+                    out_paths[qual] = out_path
                 except Exception as e:
-                    await rep.report(f"Encoding Error: {e}", "error")
+                    await rep.report(f"Encoding Error ({qual}p): {e}", "error")
                     await safe_telegram_call(stat_msg.delete)
-                    if ffLock.locked():
-                        ffLock.release()
+                    if ffLock.locked(): ffLock.release()
                     return
 
-                await rep.report("Successfully Compressed. Now Uploading...", "info")
+                await rep.report(f"Successfully Compressed {qual}p. Now Uploading...", "info")
                 await safe_telegram_call(
                     editMessage,
                     stat_msg,
-                    f"‣ <b>Anime Name :</b> <b><i>{filename}</i></b>\n\n<i>Ready to Upload...</i>"
+                    f"‣ <b>Anime Name :</b> <b><i>{filename}</i></b>\n\n<i>Uploading {qual}p...</i>"
                 )
                 await asyncio.sleep(1.5)
 
                 try:
                     msg = await TgUploader(stat_msg).upload(out_path, qual)
                 except Exception as e:
-                    await rep.report(f"Upload Error: {e}", "error")
+                    await rep.report(f"Upload Error ({qual}p): {e}", "error")
                     await safe_telegram_call(stat_msg.delete)
-                    if ffLock.locked():
-                        ffLock.release()
+                    if ffLock.locked(): ffLock.release()
                     return
 
-                await rep.report("Successfully Uploaded to Telegram.", "info")
+                await rep.report(f"Successfully Uploaded {qual}p to Telegram.", "info")
                 msg_id = msg.id
                 bot_user = await get_bot_username()
                 token = await encode('get-' + str(msg_id * abs(Var.FILE_STORE)))
                 link = f"https://t.me/{bot_user}?start={token}"
-                #link = f"https://telegram.me/{(await bot.get_me()).username}?start={await encode('get-'+str(msg_id * abs(Var.FILE_STORE)))}"
-
-                # ✅ Safe button editing with FloodWait handling
-                if post_msg:
-                    if btns and len(btns[-1]) == 1:
-                        btns[-1].insert(1, InlineKeyboardButton(f"{btn_formatter[qual]}", url=link))
-                    else:
-                        btns.append([InlineKeyboardButton(f"{btn_formatter[qual]}", url=link)])
-
-                    await safe_telegram_call(
-                        editMessage,
-                        post_msg,
-                        post_msg.caption.html if post_msg.caption else "",
-                        InlineKeyboardMarkup(btns)
-                    )
-                    await asyncio.sleep(1.5)  # small cooldown to avoid multiple FloodWaits in succession
+                uploaded_links[qual] = link
 
                 await db.saveAnime(ani_id, ep_no, qual, post_id)
                 bot_loop.create_task(extra_utils(msg_id, out_path))
+
+            # Phase 3: Update Original Post Buttons
+            if post_msg and uploaded_links:
+                btns = [
+                    [
+                        InlineKeyboardButton("480p", url=uploaded_links.get('480', '')),
+                        InlineKeyboardButton("720p", url=uploaded_links.get('720', ''))
+                    ],
+                    [
+                        InlineKeyboardButton("✨1080p✨", url=uploaded_links.get('1080', ''))
+                    ]
+                ]
+
+                await safe_telegram_call(
+                    editMessage,
+                    post_msg,
+                    post_msg.caption.html if post_msg.caption else "",
+                    InlineKeyboardMarkup(btns)
+                )
 
             if ffLock.locked():
                 ffLock.release()
             await safe_telegram_call(stat_msg.delete)
             await aioremove(dl)
+            if ospath.exists(sub_path): await aioremove(sub_path)
+            if translated_sub_path and ospath.exists(translated_sub_path): await aioremove(translated_sub_path)
 
         ani_cache['completed'].add(ani_id)
 
