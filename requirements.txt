@@ -1,0 +1,36 @@
+pyrofork==2.3.59
+pytz
+aiohttp
+aioshutil
+aiofiles
+anitopy
+apscheduler
+dnspython
+motor>=3.4
+pymongo>=4.0
+feedparser
+lxml_html_clean
+psutil
+shortzy
+pycountry
+#pyrogram==2.0.106
+#kurigram
+#https://codeload.github.com/KurimuzonAkuma/pyrogram/zip/refs/heads/dev
+python-dotenv
+pyromod
+tgcrypto
+torrentp==0.1.7
+git+https://github.com/kaif-00z/html-telegraph-poster
+uvloop==0.21.0
+bencodepy
+aria2p
+Pillow
+#...For Web Scraping...#
+bs4==0.0.2
+#...For Handling Requests...#
+requests==2.31.0
+#...For Grabbing Episode Information...#
+ffprobe
+#...For Web App (Remove Bellow 2 Requirements If You Deploy It As Worker)...#
+flask # Only if you deploy it as web service 
+gunicorn # Only if you deploy it as web service 
