@@ -179,7 +179,12 @@ class FFEncoder:
 
         # move original to temp path for safe processing
         try:
-            await aiorename(video_file, dl_npath)
+            if not self.is_master:
+                # Compression steps shouldn't consume the master file
+                import shutil
+                shutil.copy2(video_file, dl_npath)
+            else:
+                await aiorename(video_file, dl_npath)
         except Exception:
             # if rename failed (maybe same path), try copy fallback via shell
             try:
@@ -257,7 +262,8 @@ class FFEncoder:
 
         # start process
         try:
-            self.__proc = await create_subprocess_shell(ffcode, stdout=PIPE, stderr=PIPE)
+            # Avoid using PIPE without consuming it, to prevent async buffer deadlocks hanging ffmpeg
+            self.__proc = await create_subprocess_shell(ffcode)
         except Exception:
             LOGS.exception("Failed to start ffmpeg")
             # restore original file to its original name if possible
@@ -286,9 +292,13 @@ class FFEncoder:
 
         # restore original input file
         try:
-            await aiorename(dl_npath, self.dl_path)
+            if not self.is_master:
+                # We used copy2, so we can just delete the temp input file
+                await aioremove(dl_npath)
+            else:
+                await aiorename(dl_npath, self.dl_path)
         except Exception:
-            LOGS.exception("Failed to restore input file to original location")
+            LOGS.exception("Failed to restore/cleanup input file to original location")
 
         if self.is_cancelled:
             LOGS.info("Encoding was cancelled by user")
