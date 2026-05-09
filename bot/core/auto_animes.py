@@ -224,8 +224,14 @@ async def get_animes(name, torrent, force=False):
             proc = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-i", dl_file, "-map", "0:s:0?", sub_path)
             await proc.wait()
 
+            await safe_telegram_call(
+                editMessage,
+                stat_msg,
+                f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n<i>Phase 1: Analyzing... Phase 2: Translating to Hinglish...</i>"
+            )
+            await rep.report("Starting Translation...", "info")
+
             # Get Groq API Keys for translation
-            bot_user_id = (await get_bot_username()) # Assuming owner set it up, ideally we pass a valid user ID or system default
             api_pool = await db.get_groq_api_pool("global_groq_pool") # Using the fixed pool ID
 
             if ospath.exists(sub_path):
@@ -235,7 +241,7 @@ async def get_animes(name, torrent, force=False):
 
             uploaded_links = {}
 
-            # Phase 2: Sequential Master Encode (1080p), Compress (720p, 480p) & Upload
+            # Phase 3: Sequential Master Encode (1080p), Compress (720p, 480p) & Upload
             encoding_flow = [
                 {'qual': '1080', 'is_master': True},
                 {'qual': '720', 'is_master': False},

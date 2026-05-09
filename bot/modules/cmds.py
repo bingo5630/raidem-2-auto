@@ -1374,18 +1374,18 @@ async def manual_schedule(_, message):
 
 
 
-@bot.on_message(filters.command("setchannel") & filters.user(Var.OWNER_ID))
+@bot.on_message(filters.command("set_whitelist") & filters.user(Var.OWNER_ID))
 async def set_anime_channel_handler(client, message):
     try:
-        print("✅ /setchannel triggered")
+        print("✅ /set_whitelist triggered")
 
         if not message.reply_to_message or not message.reply_to_message.forward_from_chat:
             print("❌ Invalid usage — must reply to a forwarded message.")
-            return await message.reply_text("❌ Usage:\nReply to a forwarded channel message with:\n`/setchannel <anime name>`")
+            return await message.reply_text("❌ Usage:\nReply to a forwarded channel message with:\n`/set_whitelist <anime name>`")
 
         args = message.text.split(None, 1)
         if len(args) < 2:
-            return await message.reply_text("❌ Please provide the anime name: `/setchannel <anime name>`")
+            return await message.reply_text("❌ Please provide the anime name: `/set_whitelist <anime name>`")
 
         anime_name = args[1].strip()
         chat = message.reply_to_message.forward_from_chat
@@ -1417,7 +1417,7 @@ async def handle_invite_command(client, message):
     user_id = message.from_user.id
 
     if user_id not in pending_invites:
-        return await message.reply_text("❌ No anime is waiting for an invite link. Use `/setchannel` first.")
+        return await message.reply_text("❌ No anime is waiting for an invite link. Use `/set_whitelist` first.")
 
     if len(message.command) < 2:
         return await message.reply_text("❌ Please send the invite link like:\n`/invite https://t.me/xxxxxxx`")
@@ -1464,23 +1464,23 @@ async def view_api_handler(client, message):
 
 
 # List all anime-channel mappings
-@bot.on_message(filters.command("listchannels") & filters.user(Var.OWNER_ID))
-async def list_all_channels(client, message):
-    print("✅ Command triggered: /listchannels")
+@bot.on_message(filters.command("view_whitelist") & filters.user(Var.OWNER_ID))
+async def list_all_whitelist(client, message):
+    print("✅ Command triggered: /view_whitelist")
     mapping = await db.list_all_anime_channels()
     if not mapping:
-        return await message.reply("📭 No anime-channel mappings found.")
+        return await message.reply("📭 No anime whitelist mappings found.")
     text = "\n".join([f"• `{k}` → `{v}`" for k, v in mapping.items()])
-    await message.reply(f"📚 <b>Anime → Channel Mappings:</b>\n\n{text}", quote=True)
+    await message.reply(f"📚 <b>Anime Whitelist Mappings:</b>\n\n{text}", quote=True)
 
 # Delete an anime-channel mapping
-@bot.on_message(filters.command("delchannel") & filters.user(Var.OWNER_ID))
-async def delete_anime_channel_handler(client, message):
-    print("✅ Command triggered: /delte")
+@bot.on_message(filters.command("del_whitelist") & filters.user(Var.OWNER_ID))
+async def delete_whitelist_handler(client, message):
+    print("✅ Command triggered: /del_whitelist")
     try:
         args = message.text.split(None, 1)
         if len(args) < 2:
-            return await message.reply_text("❌ Usage:\n/delchannel <anime name>")
+            return await message.reply_text("❌ Usage:\n/del_whitelist <anime name>")
 
         anime_name = args[1].strip().lower()
 
