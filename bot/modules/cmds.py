@@ -1408,7 +1408,7 @@ async def set_anime_channel_handler(client, message):
             )
 
     except Exception as e:
-        print(f"❌ Error in /setchannel: {e}")
+        print(f"❌ Error in /set_whitelist: {e}")
         await message.reply_text(f"❌ Error: {e}")
 
 
@@ -1463,9 +1463,12 @@ async def view_api_handler(client, message):
     await message.reply_text(response)
 
 
-# List all anime-channel mappings
+# List all anime-channel mappings (Original Force Sub Commands Restored, Whitelist added below)
+# Note: The original /channels and /delchannel commands for Force Sub are preserved earlier in this file.
+# The following commands handle the Anime Whitelist mapping.
+
 @bot.on_message(filters.command("view_whitelist") & filters.user(Var.OWNER_ID))
-async def list_all_whitelist(client, message):
+async def list_all_whitelist_channels(client, message):
     print("✅ Command triggered: /view_whitelist")
     mapping = await db.list_all_anime_channels()
     if not mapping:
@@ -1473,7 +1476,7 @@ async def list_all_whitelist(client, message):
     text = "\n".join([f"• `{k}` → `{v}`" for k, v in mapping.items()])
     await message.reply(f"📚 <b>Anime Whitelist Mappings:</b>\n\n{text}", quote=True)
 
-# Delete an anime-channel mapping
+# Delete an anime-whitelist mapping
 @bot.on_message(filters.command("del_whitelist") & filters.user(Var.OWNER_ID))
 async def delete_whitelist_handler(client, message):
     print("✅ Command triggered: /del_whitelist")
@@ -1488,7 +1491,7 @@ async def delete_whitelist_handler(client, message):
         await db.del_anime_channel(anime_name)
         await db.delete_anime_invite(anime_name)
 
-        await message.reply_text(f"✅ Removed channel mapping for **{anime_name}**")
+        await message.reply_text(f"✅ Removed whitelist mapping for **{anime_name}**")
 
     except Exception as e:
         await message.reply_text(f"❌ Error: {e}")
