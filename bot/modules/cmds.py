@@ -1635,6 +1635,26 @@ async def del_watermark_handler(client: Client, message: Message):
     await message.reply("🗑️ Wᴀᴛᴇʀᴍᴀʀᴋ ᴅᴇʟᴇᴛᴇᴅ.")
 
 
+@bot.on_message(filters.command("mode") & filters.user(Var.OWNER_ID))
+async def set_mode_command(client: Client, message: Message):
+    reply_markup = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("[ ᴠɪᴅᴇᴏ ]", callback_data="setmode_video"),
+                InlineKeyboardButton("[ ᴅᴏᴄᴜᴍᴇɴᴛ ]", callback_data="setmode_document")
+            ],
+            [
+                InlineKeyboardButton("[ ʙᴀᴄᴋ ]", callback_data="back_start")
+            ]
+        ]
+    )
+    await message.reply_photo(
+        photo="https://ibb.co/Nd8wyNhx",
+        caption="> **ꜱᴇʟᴇᴄᴛ ᴏᴜᴛᴘᴜᴛ ᴍᴏᴅᴇ**",
+        reply_markup=reply_markup
+    )
+
+
 @bot.on_message(filters.command("sthumb") & filters.user(Var.OWNER_ID))
 async def save_thumbnail_handler(client: Client, message: Message):
     reply = message.reply_to_message

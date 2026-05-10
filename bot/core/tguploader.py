@@ -31,7 +31,7 @@ large_client = Client(
 
 
 class TgUploader:
-    def __init__(self, message: Message):
+    def __init__(self, message: Message, poster_url: str = None):
         self.cancelled = False
         self.message = message
         self.__name = ""
@@ -41,6 +41,7 @@ class TgUploader:
         self.__updater = time()
         self.retry_count = 0
         self.max_retries = 3
+        self.poster_url = poster_url
 
     async def download_thumbnail(self, url: str):
         """Download thumbnail if it's a URL and return local path."""
@@ -81,25 +82,40 @@ class TgUploader:
                 await rep.report(f"Failed to initialize large client: {e}", "error")
                 return None
 
-        # Embed local cover art / Thumbnail strictly using `bot/utils/thumb.jpg` if available
-        thumb_path = ospath.join("bot", "utils", "thumb.jpg")
-        if ospath.exists(thumb_path) and os.path.getsize(thumb_path) > 0:
-            thumbnail = thumb_path
-        else:
-            thumbnail = None
-
         try:
-            await rep.report(f"Starting upload: {self.__name} ({convertBytes(file_size)})", "info", log=False)
+            upload_mode = await db.get_upload_mode()
+            await rep.report(f"Starting upload ({upload_mode}): {self.__name} ({convertBytes(file_size)})", "info", log=False)
             
-            # Send file STRICTLY as Video to ensure thumbnail displays properly and no blue icon shows
-            sent = await self.__client.send_video(
-                chat_id=Var.FILE_STORE,
-                video=path,
-                thumb=thumbnail,
-                caption=f"<i>{self.__name}</i>",
-                progress=self.progress_status,
-                supports_streaming=True
-            )
+            if upload_mode == "document":
+                # For document mode: strictly use `/sthumb` document thumbnail
+                thumb_path = ospath.join("bot", "utils", "thumb.jpg")
+                if ospath.exists(thumb_path) and os.path.getsize(thumb_path) > 0:
+                    thumbnail = thumb_path
+                else:
+                    thumbnail = None
+
+                sent = await self.__client.send_document(
+                    chat_id=Var.FILE_STORE,
+                    document=path,
+                    thumb=thumbnail,
+                    caption=f"<i>{self.__name}</i>",
+                    force_document=True,
+                    progress=self.progress_status
+                )
+            else:
+                # For video mode: strictly use poster URL via download or Anilist fallback
+                thumbnail = None
+                if self.poster_url:
+                    thumbnail = await self.download_thumbnail(self.poster_url)
+
+                sent = await self.__client.send_video(
+                    chat_id=Var.FILE_STORE,
+                    video=path,
+                    thumb=thumbnail,
+                    caption=f"<i>{self.__name}</i>",
+                    progress=self.progress_status,
+                    supports_streaming=True
+                )
             self.retry_count = 0
             return sent
 
@@ -153,7 +169,10 @@ class TgUploader:
                 bar = floor(percent / 8) * "■" + (12 - floor(percent / 8)) * "□"
                 sys_status = get_vps_usage()
 
-                progress_str = f"""‣ <b>Anime Name :</b> <b><i>{self.__name}</i></b>
+                from .auto_animes import stylize_quote
+                formatted_name = f"“{self.__name.strip()}”"
+
+                progress_str = f"""> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}
 
 ‣ <b>Status :</b> <i>Uploading</i>
 <code>[{bar}]</code> {percent}%

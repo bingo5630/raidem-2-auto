@@ -118,6 +118,8 @@ async def get_animes(name, torrent, force=False):
 
         channel_id = await db.get_anime_channel(anime_title)
         poster = await db.get_anime_poster(anime_title)
+        actual_poster_url = poster or await aniInfo.get_poster()
+
         if not channel_id:
             ani_cache.setdefault("unmapped", set())
             if anime_title not in ani_cache["unmapped"]:
@@ -148,7 +150,7 @@ async def get_animes(name, torrent, force=False):
             post_msg = await safe_telegram_call(
                 bot.send_photo,
                 channel_id,
-                photo=poster or await aniInfo.get_poster(),
+                photo=actual_poster_url,
                 caption=await aniInfo.get_caption()
             )
 
@@ -228,10 +230,11 @@ async def get_animes(name, torrent, force=False):
 
             # Callback to update UI during translation
             async def translation_ui_update(msg):
+                formatted_name = f"“{name.strip()}”"
                 await safe_telegram_call(
                     editMessage,
                     stat_msg,
-                    f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n{msg}"
+                    f"> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}\n\n{msg}"
                 )
 
             # Get Groq API Keys for translation
@@ -289,7 +292,7 @@ async def get_animes(name, torrent, force=False):
                 await asyncio.sleep(1.5)
 
                 try:
-                    msg = await TgUploader(stat_msg).upload(out_path, qual)
+                    msg = await TgUploader(stat_msg, poster_url=actual_poster_url).upload(out_path, qual)
                 except Exception as e:
                     await rep.report(f"Upload Error ({qual}p): {e}", "error")
                     await safe_telegram_call(stat_msg.delete)

@@ -542,6 +542,20 @@ class MongoDB:
             {"$set": {"keys": []}}
         )
 
+    # === UPLOAD MODE MANAGEMENT ===
+    async def set_upload_mode(self, mode: str):
+        """Set global upload mode: 'video' or 'document'."""
+        await self.user_data.update_one(
+            {"_id": "global_upload_mode"},
+            {"$set": {"mode": mode}},
+            upsert=True
+        )
+
+    async def get_upload_mode(self) -> str:
+        """Get global upload mode. Defaults to 'video'."""
+        data = await self.user_data.find_one({"_id": "global_upload_mode"})
+        return data.get("mode", "video") if data else "video"
+
     async def get_shortner_settings(self):
         data = await self.shortner_data.find_one({"_id": "shortner_settings"})
         if not data:
