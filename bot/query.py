@@ -275,7 +275,12 @@ async def cb_handler(client: bot, query: CallbackQuery):
             ]),
         )
 
-    elif data == "start":
+    elif data.startswith("setmode_"):
+        mode = data.split("_")[1]
+        await db.set_upload_mode(mode)
+        await query.answer(f"Output mode set to {mode.upper()}", show_alert=True)
+
+    elif data == "start" or data == "back_start":
         await query.edit_message_media(
             InputMediaPhoto(random.choice(PICS), 
                             START_MSG.format(

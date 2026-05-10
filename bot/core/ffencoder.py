@@ -104,7 +104,10 @@ class FFEncoder:
 
                 bar = floor(percent / 8) * "■" + (12 - floor(percent / 8)) * "□"
 
-                progress_str = f"""<blockquote>‣ <b>Anime Name :</b> <b><i>{self.__name}</i></b></blockquote>
+                from .auto_animes import stylize_quote
+                formatted_name = f"“{self.__name.strip()}”"
+
+                progress_str = f"""> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}
 
 <blockquote>‣ <b>Status :</b> <i>Encoding</i>
     <code>[{bar}]</code> {percent}%</blockquote>
@@ -225,17 +228,30 @@ class FFEncoder:
 
         if watermark and ospath.exists(watermark):
             ffcode += f" -i '{watermark}'"
-            # Combine scale and subtitle filter if scale is applied
-            # Note: watermark is overlayed first, then scaled down if needed, then subtitles added.
-            # Or we can scale the base video first, then apply watermark, then subtitles.
-            # To be safe, we'll keep the watermark full size on the base, then apply subsequent filters to the output of overlay.
-            # [base][wm]overlay=0:0[ovr];[ovr]scale=...[scl];[scl]subtitles=...
+            # Scale down the watermark and place it in the top-left corner
+            # 1. Scale watermark to a fixed smaller width (e.g. 150px) while maintaining aspect ratio
+            # 2. Overlay it at x=20, y=20 (top-left)
+            # 3. Apply scale and subtitle filters subsequently
 
-            filter_str = f"[1:v][0:v]scale2ref=w=iw:h=ih[wm][base];[base][wm]overlay=0:0"
+            wm_scale = "[1:v]scale=150:-1[wm];"
+            overlay = "[0:v][wm]overlay=20:20[ovr]"
+
+            filter_str = wm_scale + overlay
+
+            # Apply subsequent scale and subtitles to the output of overlay [ovr]
             if scale_filter or subtitle_filter:
-                filter_str += f"{scale_filter}{subtitle_filter}"
+                filter_str += f";[ovr]"
+                # remove the leading comma from scale_filter if it's the first one, or from subtitle filter
+                post_filters = ""
+                if scale_filter:
+                    post_filters += scale_filter
+                if subtitle_filter:
+                    post_filters += subtitle_filter
+                if post_filters.startswith(','):
+                    post_filters = post_filters[1:]
+                filter_str += post_filters
 
-            ffcode += f" -filter_complex \"{filter_str}\" -map 0:a -map 0:v"
+            ffcode += f" -filter_complex \"{filter_str}\" -map 0:a -map \"[ovr]\""
             ffcode += f" {ffargs[self.__qual]} "
         else:
             # No watermark
