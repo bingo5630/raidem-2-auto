@@ -158,21 +158,38 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool):
 
         while not success:
             api_key_1 = api_pool[0]
-            analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
+            try:
+                analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
+            except Exception:
+                analysis_res = "❌"
 
             if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
-                await asyncio.sleep(5)
-                analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
+                if "429" in analysis_res:
+                    await asyncio.sleep(15)
+                else:
+                    await asyncio.sleep(5)
+                try:
+                    analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
+                except Exception:
+                    analysis_res = "❌"
                 if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
                     analysis_res = '{"gender": "neutral", "hierarchy": "friends", "tone": "casual", "context": "general anime scene"}'
+
+            await asyncio.sleep(15)
 
             keys_tried = 0
             while keys_tried < min(4, len(api_pool)):
                 api_key_trans = api_pool[trans_key_idx]
-                res = await call_groq(TRANSLATOR_PROMPT, f"Analysis:\n{analysis_res}\n\nLines to Translate:\n{xml_chunk}", api_key_trans, temperature=temp)
+                try:
+                    res = await call_groq(TRANSLATOR_PROMPT, f"Analysis:\n{analysis_res}\n\nLines to Translate:\n{xml_chunk}", api_key_trans, temperature=temp)
+                except Exception:
+                    res = "❌"
 
                 if res in ["RETRY_REQUIRED", "429", "503"] or res.startswith("❌"):
-                    await asyncio.sleep(0.5)
+                    if "429" in res:
+                        await asyncio.sleep(15)
+                    else:
+                        await asyncio.sleep(0.5)
                     trans_key_idx = (trans_key_idx + 1) % len(api_pool)
                     keys_tried += 1
                 else:
@@ -204,6 +221,7 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool):
                 await asyncio.sleep(5)
                 temp = 0.2
 
+        await asyncio.sleep(2)
         idx += 1
     return None, translated_texts
 

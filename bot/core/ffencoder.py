@@ -194,14 +194,15 @@ class FFEncoder:
                 LOGS.exception("Failed to move/copy input file")
                 raise
 
-        # HDRip/HDRi detection
-        is_hdrip = any(term.lower() in (self.__name or "").lower() for term in ("hdrip", "hdri"))
-
         watermark = None
-        wm = await db.get_watermark()
-        if wm and (wm.startswith("http://") or wm.startswith("https://")):
-            local_wm = await self.download_watermark(wm)
-            watermark = local_wm if local_wm else None
+        try:
+            wm = await db.get_watermark()
+            if wm and (wm.startswith("http://") or wm.startswith("https://")):
+                local_wm = await self.download_watermark(wm)
+                watermark = local_wm if local_wm else None
+        except Exception:
+            LOGS.exception("Error fetching/downloading watermark. Proceeding without it.")
+            watermark = None
 
         # Build base ffmpeg command
         ffcode = f"ffmpeg -hide_banner -loglevel error -progress '{self.__prog_file}' -y -i '{dl_npath}'"
@@ -212,15 +213,12 @@ class FFEncoder:
             if self.sub_path and ospath.exists(self.sub_path):
                 # Use AHS BestFont styling
                 fontsdir = ospath.abspath(ospath.join("bot", "utils"))
-                # Copy subtitle file to temp dir to avoid path issues
                 import time as t
                 temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
-                # Need to use safe subprocess call since we are in async flow but don't want to use await here easily.
-                # However, since this runs before the shell command, we can just use shutil
                 import shutil
                 shutil.copy2(self.sub_path, temp_sub_path)
                 force_style = "FontName=AHS BestFont,FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,Bold=0,Italic=0,Outline=1,Shadow=1,MarginV=20,Alignment=2"
-                subtitle_filter = f",ass='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
+                subtitle_filter = f",subtitles='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
 
             if watermark and ospath.exists(watermark):
                 ffcode += f" -i '{watermark}'"
