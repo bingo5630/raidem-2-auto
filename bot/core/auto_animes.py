@@ -224,18 +224,21 @@ async def get_animes(name, torrent, force=False):
             proc = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-i", dl_file, "-map", "0:s:0?", sub_path)
             await proc.wait()
 
-            await safe_telegram_call(
-                editMessage,
-                stat_msg,
-                f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n<i>Phase 1: Analyzing... Phase 2: Translating to Hinglish...</i>"
-            )
             await rep.report("Starting Translation...", "info")
+
+            # Callback to update UI during translation
+            async def translation_ui_update(msg):
+                await safe_telegram_call(
+                    editMessage,
+                    stat_msg,
+                    f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n{msg}"
+                )
 
             # Get Groq API Keys for translation
             api_pool = await db.get_groq_api_pool("global_groq_pool") # Using the fixed pool ID
 
             if ospath.exists(sub_path):
-                translated_sub_path = await translate_subtitle_file(sub_path, api_pool)
+                translated_sub_path = await translate_subtitle_file(sub_path, api_pool, update_callback=translation_ui_update)
             else:
                 await rep.report("No Subtitles Found or Extraction Failed.", "warning")
 
@@ -265,8 +268,8 @@ async def get_animes(name, torrent, force=False):
                 await rep.report(f"Starting Encode for {qual}p...", "info")
 
                 try:
-                    # If it's a compressed version, we encode from the newly created 1080p master file
-                    input_file = out_paths.get('1080') if not is_master else dl
+                    # Always use the exact video file inside the downloaded directory to avoid IsADirectoryError crashes
+                    input_file = master_dl_path
 
                     encoder = FFEncoder(stat_msg, input_file, filename, qual, is_master=is_master, sub_path=translated_sub_path)
                     out_path = await encoder.start_encode()
@@ -303,24 +306,31 @@ async def get_animes(name, torrent, force=False):
                 await db.saveAnime(ani_id, ep_no, qual, post_id)
                 bot_loop.create_task(extra_utils(msg_id, out_path))
 
-            # Phase 3: Update Original Post Buttons
-            if post_msg and uploaded_links:
-                btns = [
-                    [
-                        InlineKeyboardButton("480p", url=uploaded_links.get('480', '')),
-                        InlineKeyboardButton("720p", url=uploaded_links.get('720', ''))
-                    ],
-                    [
-                        InlineKeyboardButton("✨1080p✨", url=uploaded_links.get('1080', ''))
+                # Phase 4: Update Original Post Buttons Dynamically After Every Quality
+                if post_msg and uploaded_links:
+                    btns = [
+                        [
+                            InlineKeyboardButton("480p", url=uploaded_links.get('480', '')),
+                            InlineKeyboardButton("720p", url=uploaded_links.get('720', ''))
+                        ],
+                        [
+                            InlineKeyboardButton("✨1080p✨", url=uploaded_links.get('1080', ''))
+                        ]
                     ]
-                ]
 
-                await safe_telegram_call(
-                    editMessage,
-                    post_msg,
-                    post_msg.caption.html if post_msg.caption else "",
-                    InlineKeyboardMarkup(btns)
-                )
+                    # Filter out buttons with empty URLs
+                    filtered_btns = []
+                    for row in btns:
+                        filtered_row = [btn for btn in row if btn.url]
+                        if filtered_row:
+                            filtered_btns.append(filtered_row)
+
+                    await safe_telegram_call(
+                        editMessage,
+                        post_msg,
+                        post_msg.caption.html if post_msg.caption else "",
+                        InlineKeyboardMarkup(filtered_btns)
+                    )
 
             if ffLock.locked():
                 ffLock.release()

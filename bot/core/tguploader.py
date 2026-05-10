@@ -81,33 +81,25 @@ class TgUploader:
                 await rep.report(f"Failed to initialize large client: {e}", "error")
                 return None
 
-        # Fetch thumbnail
-        thumbnail = await db.get_thumbnail()
-        if isinstance(thumbnail, str) and thumbnail.startswith(("http://", "https://")):
-            thumbnail = await self.download_thumbnail(thumbnail)
-        if not thumbnail or not os.path.exists(thumbnail) or os.path.getsize(thumbnail) == 0:
-            thumbnail = "thumb.jpg" if os.path.exists("thumb.jpg") and os.path.getsize("thumb.jpg") > 0 else None
+        # Embed local cover art / Thumbnail strictly using `bot/utils/thumb.jpg` if available
+        thumb_path = ospath.join("bot", "utils", "thumb.jpg")
+        if ospath.exists(thumb_path) and os.path.getsize(thumb_path) > 0:
+            thumbnail = thumb_path
+        else:
+            thumbnail = None
 
         try:
             await rep.report(f"Starting upload: {self.__name} ({convertBytes(file_size)})", "info", log=False)
             
-            if Var.AS_DOC:
-                sent = await self.__client.send_document(
-                    chat_id=Var.FILE_STORE,
-                    document=path,
-                    thumb=thumbnail,
-                    caption=f"<i>{self.__name}</i>",
-                    force_document=True,
-                    progress=self.progress_status
-                )
-            else:
-                sent = await self.__client.send_video(
-                    chat_id=Var.FILE_STORE,
-                    video=path,
-                    thumb=thumbnail,
-                    caption=f"<i>{self.__name}</i>",
-                    progress=self.progress_status
-                )
+            # Send file STRICTLY as Video to ensure thumbnail displays properly and no blue icon shows
+            sent = await self.__client.send_video(
+                chat_id=Var.FILE_STORE,
+                video=path,
+                thumb=thumbnail,
+                caption=f"<i>{self.__name}</i>",
+                progress=self.progress_status,
+                supports_streaming=True
+            )
             self.retry_count = 0
             return sent
 

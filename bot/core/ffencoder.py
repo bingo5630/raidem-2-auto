@@ -207,43 +207,56 @@ class FFEncoder:
         # Build base ffmpeg command
         ffcode = f"ffmpeg -hide_banner -loglevel error -progress '{self.__prog_file}' -y -i '{dl_npath}'"
 
-        if self.is_master:
-            # For the master (1080p), apply both watermark and translated subtitles.
-            subtitle_filter = ""
-            if self.sub_path and ospath.exists(self.sub_path):
-                # Use AHS BestFont styling
-                fontsdir = ospath.abspath(ospath.join("bot", "utils"))
-                import time as t
-                temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
-                import shutil
-                shutil.copy2(self.sub_path, temp_sub_path)
-                force_style = "FontName=AHS BestFont,FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,Bold=0,Italic=0,Outline=1,Shadow=1,MarginV=20,Alignment=2"
-                subtitle_filter = f",subtitles='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
+        # For ALL qualities, apply watermark and translated subtitles because input is the original file.
+        subtitle_filter = ""
+        if self.sub_path and ospath.exists(self.sub_path):
+            # Use AHS BestFont styling
+            fontsdir = ospath.abspath(ospath.join("bot", "utils"))
+            import time as t
+            temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
+            import shutil
+            shutil.copy2(self.sub_path, temp_sub_path)
+            force_style = "FontName=AHS BestFont,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,Bold=0,Italic=0,Outline=1,Shadow=1,MarginV=20,Alignment=2,WrapStyle=1"
+            subtitle_filter = f",subtitles='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
 
-            if watermark and ospath.exists(watermark):
-                ffcode += f" -i '{watermark}'"
-                ffcode += (
-                    f" -filter_complex \"[1:v][0:v]scale2ref=w=iw:h=ih[wm][base];[base][wm]overlay=0:0{subtitle_filter}\" "
-                    "-map 0:a -map 0:v"
-                )
-                ffcode += f" {ffargs[self.__qual]} "
-            else:
-                if subtitle_filter:
-                    # Strip leading comma if there's no watermark filter complex
-                    subtitle_filter_str = subtitle_filter[1:]
-                    ffcode += f" -vf \"{subtitle_filter_str}\" -map 0:v -map 0:a"
-                else:
-                    ffcode += " -map 0:v -map 0:a -map 0:s?"
-                ffcode += f" {ffargs[self.__qual]} "
+        scale_filter = ""
+        if not self.is_master and scale_values.get(self.__qual):
+            scale_filter = f",{scale_values[self.__qual]}:flags=fast_bilinear"
+
+        if watermark and ospath.exists(watermark):
+            ffcode += f" -i '{watermark}'"
+            # Combine scale and subtitle filter if scale is applied
+            # Note: watermark is overlayed first, then scaled down if needed, then subtitles added.
+            # Or we can scale the base video first, then apply watermark, then subtitles.
+            # To be safe, we'll keep the watermark full size on the base, then apply subsequent filters to the output of overlay.
+            # [base][wm]overlay=0:0[ovr];[ovr]scale=...[scl];[scl]subtitles=...
+
+            filter_str = f"[1:v][0:v]scale2ref=w=iw:h=ih[wm][base];[base][wm]overlay=0:0"
+            if scale_filter or subtitle_filter:
+                filter_str += f"{scale_filter}{subtitle_filter}"
+
+            ffcode += f" -filter_complex \"{filter_str}\" -map 0:a -map 0:v"
+            ffcode += f" {ffargs[self.__qual]} "
         else:
-            # For compressed versions (720p, 480p), the master is the input.
-            # Scale down the video without reapplying watermark/subtitles.
-            if scale_values.get(self.__qual):
-                ffcode += f" -vf '{scale_values[self.__qual]}:flags=fast_bilinear' -map 0:v -map 0:a"
-                ffcode += f" {ffargs[self.__qual]} "
+            # No watermark
+            combined_vf = ""
+            if scale_filter:
+                combined_vf += scale_filter
+            if subtitle_filter:
+                combined_vf += subtitle_filter
+
+            if combined_vf:
+                # Strip leading comma
+                combined_vf_str = combined_vf[1:]
+                ffcode += f" -vf \"{combined_vf_str}\" -map 0:v -map 0:a"
             else:
-                ffcode += " -map 0:v -map 0:a"
-                ffcode += f" {ffargs[self.__qual]} "
+                ffcode += " -map 0:v -map 0:a -map 0:s?"
+            ffcode += f" {ffargs[self.__qual]} "
+
+        # Embed local cover art if exists
+        thumb_path = ospath.join("bot", "utils", "thumb.jpg")
+        if ospath.exists(thumb_path):
+            ffcode += f" -attach '{thumb_path}' -metadata:s:t mimetype=image/jpeg "
 
         # global metadata
         ffcode += (

@@ -1635,119 +1635,24 @@ async def del_watermark_handler(client: Client, message: Message):
     await message.reply("🗑️ Wᴀᴛᴇʀᴍᴀʀᴋ ᴅᴇʟᴇᴛᴇᴅ.")
 
 
-@bot.on_message(filters.command("setthumbnail") & filters.user(Var.OWNER_ID))
-async def set_thumb_handler(client: Client, message: Message):
+@bot.on_message(filters.command("sthumb") & filters.user(Var.OWNER_ID))
+async def save_thumbnail_handler(client: Client, message: Message):
     reply = message.reply_to_message
-    user_id = message.from_user.id
 
-    if not reply:
+    if not reply or not (reply.photo or (reply.document and reply.document.mime_type.startswith("image/"))):
         return await message.reply(
-            "⚠️ Reply with an **image** (photo/document) or a valid **image URL** to set thumbnail."
+            "⚠️ You must reply to an **image** (photo/document) to set a custom thumbnail."
         )
 
-    # --- Case 1: Image sent as document ---
-    if reply.document and reply.document.mime_type and reply.document.mime_type.startswith("image/"):
-        await db.set_thumbnail(reply.document.file_id)
-        return await message.reply("✅ Thumbnail saved successfully.")
-
-    # --- Case 2: Image sent as photo (compressed) ---
-    elif reply.photo:
-        tmp_path = f"/tmp/thumbnail_{user_id}.jpg"
-        await client.download_media(reply.photo.file_id, file_name=tmp_path)
-
-        sent = await message.reply_document(tmp_path, caption="thumbnail Uploaded ✅")
-        file_id = sent.document.file_id
-
-        await db.set_thumbnail(file_id)
-        os.remove(tmp_path)
-        return await message.reply("✅ Thumbnail saved successfully.")
-
-    # --- Case 3: Image URL ---
-    elif reply.text and reply.text.lower().startswith(("http://", "https://")):
-        url = reply.text.strip()
-        ext = os.path.splitext(url.split("?")[0])[1] or ".jpg"
-        tmp_path = f"/tmp/url_thumbnail_{user_id}{ext}"
-
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    if resp.status != 200:
-                        return await message.reply("❌ Failed to download image from URL.")
-                    with open(tmp_path, "wb") as f:
-                        f.write(await resp.read())
-
-            sent = await message.reply_document(tmp_path, caption="Thumbnail Uploaded ✅")
-            file_id = sent.document.file_id
-
-            await db.set_thumbnail(file_id)
-            os.remove(tmp_path)
-            return await message.reply("✅ Thumbnail saved successfully.")
-
-        except Exception as e:
-            return await message.reply(f"❌ Error downloading image:\n<code>{e}</code>")
-
-    # --- No valid input ---
-    return await message.reply(
-        "⚠️ Reply with an **image** (photo/document) or a valid **image URL** to set Thumbnail."
-    )
-
-@bot.on_message(filters.command("getthumbnail") & filters.user(Var.OWNER_ID))
-async def get_thumb_handler(client: Client, message: Message):
-    user_id = message.from_user.id
-    watermark = await db.get_thumbnail()
-
-    if not watermark:
-        return await message.reply("⚠️ Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴀɴʏ sᴀᴠᴇᴅ thumbnail.")
-
-    # Case 1: Telegram file_id (most common)
     try:
-        return await message.reply_document(
-            watermark,
-            caption="🖼️ Tʜɪs ɪs ʏᴏᴜʀ sᴀᴠᴇᴅ thumbnail ɪᴍᴀɢᴇ."
-        )
-    except Exception:
-        pass  
+        thumb_dir = os.path.join("bot", "utils")
+        os.makedirs(thumb_dir, exist_ok=True)
+        thumb_path = os.path.join(thumb_dir, "thumb.jpg")
 
-    # Case 2: Local file exists
-    if os.path.exists(watermark):
-        return await message.reply_document(
-            watermark,
-            caption="🖼️ Tʜɪs ɪs ʏᴏᴜʀ sᴀᴠᴇᴅ thumbnail ɪᴍᴀɢᴇ."
-        )
-
-    # Case 3: URL → download and send
-    if watermark.startswith("http://") or watermark.startswith("https://"):
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(watermark) as resp:
-                    if resp.status != 200:
-                        return await message.reply("❌ Fᴀɪʟᴇᴅ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ thumbnail ғʀᴏᴍ ᴛʜᴇ ᴜʀʟ.")
-
-                    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-                    tmp_file.write(await resp.read())
-                    tmp_file.close()
-
-            await message.reply_document(
-                tmp_file.name,
-                caption="🖼️ Tʜɪs ɪs ʏᴏᴜʀ sᴀᴠᴇᴅ thumbnail (ᴅᴏᴡɴʟᴏᴀᴅᴇᴅ ғʀᴏᴍ ᴜʀʟ)."
-            )
-
-            os.unlink(tmp_file.name)
-            return
-        except Exception as e:
-            return await message.reply(f"❌ Eʀʀᴏʀ ᴡʜɪʟᴇ ᴅᴏᴡɴʟᴏᴀᴅɪɴɢ Thumbnail:\n<code>{str(e)}</code>")
-
-    return await message.reply("⚠️ Sᴀᴠᴇᴅ ᴡᴀᴛᴇʀᴍᴀʀᴋ ɪs ɴᴇɪᴛʜᴇʀ ᴀ ғɪʟᴇ, ғɪʟᴇ_ɪᴅ ɴᴏʀ ᴀ ᴠᴀʟɪᴅ ᴜʀʟ.")
-
-# /delwatermark command
-
-@bot.on_message(filters.command("delthumbnail") & filters.user(Var.OWNER_ID))
-async def del_thumb_handler(client: Client, message: Message):
-    path = await db.get_thumbnail()
-    if path and os.path.exists(path):
-        os.remove(path)
-    await db.del_thumbnail()
-    await message.reply("🗑️ Thumbnail ᴅᴇʟᴇᴛᴇᴅ.")
+        await client.download_media(reply, file_name=thumb_path)
+        return await message.reply("✅ Custom thumbnail saved successfully!")
+    except Exception as e:
+        return await message.reply(f"❌ Error saving thumbnail:\n<code>{e}</code>")
 
 
 @bot.on_message(filters.private & filters.user(Var.ADMINS) & filters.command("batch"))
