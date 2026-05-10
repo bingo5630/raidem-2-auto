@@ -136,7 +136,7 @@ async def call_groq(system_prompt, user_content, api_key, temperature=0.2):
         except Exception as e:
             return f"❌ Groq Error: {str(e)}"
 
-async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool):
+async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_callback=None):
     if not api_pool:
         print("❌ No API keys available for translation.")
         return "❌ No API keys available for translation.", []
@@ -144,6 +144,9 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool):
     translated_texts = []
     idx = 0
     trans_key_idx = min(1, len(api_pool) - 1)  # Use 2nd key for translation if available, else 1st
+
+    # Store initial analysis result
+    global_analysis_res = None
 
     while idx < len(chunk_queue):
         original_lines = to_translate[idx*10 : (idx+1)*10]
@@ -156,32 +159,41 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool):
         temp = 0.2
         full_cycle_count = 0
 
+        if update_callback and global_analysis_res is None:
+            await update_callback("> ᴘʜᴀꜱᴇ 1: ᴀɴᴀʟʏᴢɪɴɢ...")
+
         while not success:
             api_key_1 = api_pool[0]
-            try:
-                analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
-            except Exception:
-                analysis_res = "❌"
-
-            if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
-                if "429" in analysis_res:
-                    await asyncio.sleep(15)
-                else:
-                    await asyncio.sleep(5)
+            if global_analysis_res is None:
                 try:
                     analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
                 except Exception:
                     analysis_res = "❌"
-                if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
-                    analysis_res = '{"gender": "neutral", "hierarchy": "friends", "tone": "casual", "context": "general anime scene"}'
 
-            await asyncio.sleep(15)
+                if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
+                    if "429" in analysis_res:
+                        await asyncio.sleep(15)
+                    else:
+                        await asyncio.sleep(5)
+                    try:
+                        analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
+                    except Exception:
+                        analysis_res = "❌"
+                    if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
+                        analysis_res = '{"gender": "neutral", "hierarchy": "friends", "tone": "casual", "context": "general anime scene"}'
+
+                global_analysis_res = analysis_res
+                # Phase 1 delay done ONLY ONCE
+                await asyncio.sleep(15)
+
+            if update_callback:
+                await update_callback(f"> ᴘʜᴀꜱᴇ 2: ᴛʀᴀɴꜱʟᴀᴛɪɴɢ ᴄʜᴜɴᴋ {idx+1}/{len(chunk_queue)}...")
 
             keys_tried = 0
             while keys_tried < min(4, len(api_pool)):
                 api_key_trans = api_pool[trans_key_idx]
                 try:
-                    res = await call_groq(TRANSLATOR_PROMPT, f"Analysis:\n{analysis_res}\n\nLines to Translate:\n{xml_chunk}", api_key_trans, temperature=temp)
+                    res = await call_groq(TRANSLATOR_PROMPT, f"Analysis:\n{global_analysis_res}\n\nLines to Translate:\n{xml_chunk}", api_key_trans, temperature=temp)
                 except Exception:
                     res = "❌"
 
@@ -226,7 +238,7 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool):
     return None, translated_texts
 
 
-async def translate_subtitle_file(file_path, api_pool):
+async def translate_subtitle_file(file_path, api_pool, update_callback=None):
     print(f"Starting translation of {file_path}")
     try:
         with open(file_path, "r", encoding="utf-8-sig", errors="ignore") as f:
@@ -252,7 +264,7 @@ async def translate_subtitle_file(file_path, api_pool):
                 lines_with_names.append(f"{name_prefix}{to_translate[j]}")
             chunk_queue.append("\n".join(lines_with_names))
 
-        err, translated_texts = await translate_subtitle_chunks(chunk_queue, to_translate, api_pool)
+        err, translated_texts = await translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_callback)
         if err:
             return None
 
