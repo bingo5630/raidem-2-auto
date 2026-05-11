@@ -192,7 +192,7 @@ async def get_animes(name, torrent, force=False):
                 await safe_telegram_call(
                     editMessage,
                     stat_msg,
-                    f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n<i>Queued to Encode...</i>\n\nPowered by @Anime_Raven"
+                    f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n<i>Queued to Encode...</i>\n\nPowered by @HellFire_Academy_Official"
                 )
                 await rep.report("Added Task to Queue...", "info")
 
@@ -262,10 +262,11 @@ async def get_animes(name, torrent, force=False):
                 is_master = step['is_master']
 
                 filename = await aniInfo.get_upname(qual)
+                formatted_name = f"“{name.strip()}”"
                 await safe_telegram_call(
                     editMessage,
                     stat_msg,
-                    f"‣ <b>Anime Name :</b> <b><i>{name}</i></b>\n\n<i>Encoding {qual}p...</i>"
+                    f"> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}\n\n<blockquote>‣ <b>Status :</b> <b>Encoding:</b> {qual}p...</blockquote>"
                 )
                 await asyncio.sleep(1.5)
                 await rep.report(f"Starting Encode for {qual}p...", "info")
@@ -284,10 +285,11 @@ async def get_animes(name, torrent, force=False):
                     return
 
                 await rep.report(f"Successfully Compressed {qual}p. Now Uploading...", "info")
+                formatted_name = f"“{filename.strip()}”"
                 await safe_telegram_call(
                     editMessage,
                     stat_msg,
-                    f"‣ <b>Anime Name :</b> <b><i>{filename}</i></b>\n\n<i>Uploading {qual}p...</i>"
+                    f"> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}\n\n<blockquote>‣ <b>Status :</b> <b>Uploading:</b> {qual}p...</blockquote>"
                 )
                 await asyncio.sleep(1.5)
 

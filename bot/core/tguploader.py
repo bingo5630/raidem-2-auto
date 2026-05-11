@@ -175,18 +175,16 @@ class TgUploader:
 
                 progress_str = f"""> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}
 
-‣ <b>Status :</b> <i>Uploading</i>
+<blockquote>‣ <b>Status :</b> <b>Uploading</b>
 <code>[{bar}]</code> {percent}%
-    
 ‣ <b>Uploaded :</b> {convertBytes(current)} / {convertBytes(total)}
 ‣ <b>Speed :</b> {convertBytes(speed)}/s
 ‣ <b>Elapsed :</b> {convertTime(diff)}
 ‣ <b>Remaining :</b> {convertTime(eta)}
-
 ‣ <b>Encoded File(s):</b> <code>{Var.QUALS.index(self.__qual) if self.__qual in Var.QUALS else 0} / {len(Var.QUALS)}</code>
-<blockquote>‣ <b>System Load :</b> <code>{sys_status}</code></blockquote>
+‣ <b>System Load :</b> <code>{sys_status}</code></blockquote>
 
-<b>Powered By</b> @Anime_Raven
+<b>Powered By</b> <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ</a>
 """
                 await editMessage(self.message, progress_str)
             except Exception:

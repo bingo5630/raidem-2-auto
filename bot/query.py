@@ -225,7 +225,7 @@ async def cb_handler(client: bot, query: CallbackQuery):
     elif data == "about":
         await query.message.edit_text(
             text=(
-                f"<b>○ Updates : <a href='https://t.me/Anime_Raven'>Anime Raven</a>\n"
+                f"<b>○ Updates : <a href='https://t.me/HellFire_Academy_Official'>HellFire_Academy</a>\n"
                 f"○ Language : <code>Python3</code>\n"
                 f"○ Library : <a href='https://docs.pyrogram.org/'>Pyrogram asyncio {__version__}</a>"
             ),

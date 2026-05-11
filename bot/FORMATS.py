@@ -19,7 +19,7 @@ CUSTOM_CAPTION = "<b>» ʙʏ <a href=https://t.me/anime_mortals>Aɴɪᴍᴇ Mᴏ
 #start message
 START_MSG = """<b>›› ʜᴇʏ!!, {mention} ~
 
-<blockquote>ʟᴏᴠᴇ ᴀɴɪᴍᴇs? ɪ ᴀᴍ ᴍᴀᴅᴇ ᴛᴏ ʜᴇʟᴘ ʏᴏᴜ ᴛᴏ ғɪɴᴅ ᴡʜᴀᴛ ʏᴏᴜ'ʀᴇ ʟᴏᴏᴋɪɴɢ ꜰᴏʀ. Bᴜᴛ I Sᴏʟᴇʟʏ Wᴏʀᴋ Fᴏʀ @Anime_Raven</blockquote></b>"""
+<blockquote>ʟᴏᴠᴇ ᴀɴɪᴍᴇs? ɪ ᴀᴍ ᴍᴀᴅᴇ ᴛᴏ ʜᴇʟᴘ ʏᴏᴜ ᴛᴏ ғɪɴᴅ ᴡʜᴀᴛ ʏᴏᴜ'ʀᴇ ʟᴏᴏᴋɪɴɢ ꜰᴏʀ. Bᴜᴛ I Sᴏʟᴇʟʏ Wᴏʀᴋ Fᴏʀ @HellFire_Academy_Official</blockquote></b>"""
 
 
 #Force sub message 
@@ -67,7 +67,7 @@ SETTING_TXT = """<b>»  Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴs</b>
 » ᴄʜᴀɴɴᴇʟ ʙᴜᴛᴛᴏɴ:  <b>{chnl_butn}</b>
 » ʀᴇǫᴜᴇsᴛ ғsᴜʙ ᴍᴏᴅᴇ: <b>{reqfsub}</b></blockquote>"""
 
-CHANNELS_TXT = """<b>›› 𝐀ɴɪᴍᴇ 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/Anime_Raven'>𝐀ɴɪᴍᴇ ʀᴀᴠᴇɴ</a>
+CHANNELS_TXT = """<b>›› 𝐀ɴɪᴍᴇ 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ ʀᴀᴠᴇɴ</a>
 <blockquote expandable>›› 𝐎ɴɢᴏɪɴɢ 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/ongoing_anime_raven'>Oɴɢᴏɪɴɢ ʀᴀᴠᴇɴ</a>
 ›› 𝐈ɴᴅᴇx 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/anime_raven_index'>Aɴɪᴍᴇ Index</a>
 ›› 𝐍ᴇᴛᴡᴏʀᴋ: <a href='https://t.me/battousai_network'>ʙᴀᴛᴛᴏᴜsᴀɪ</a>
