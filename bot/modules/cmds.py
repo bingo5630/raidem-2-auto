@@ -1520,7 +1520,7 @@ async def clear_unmapped(_, message):
 
 
 # /setwatermark command
-@bot.on_message(filters.command("setwatermark") & filters.user(Var.OWNER_ID))
+@bot.on_message(filters.command(["setwatermark", "watermark"]) & filters.user(Var.OWNER_ID))
 async def set_watermark_handler(client: Client, message: Message):
     reply = message.reply_to_message
     user_id = message.from_user.id
@@ -1530,22 +1530,33 @@ async def set_watermark_handler(client: Client, message: Message):
             "⚠️ Reply with an **image** (photo/document) or a valid **image URL** to set watermark."
         )
 
+    # Helper function to save locally
+    def save_local_watermark(source_path):
+        dest_path = os.path.join("bot", "utils", "watermark.png")
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        import shutil
+        shutil.copy2(source_path, dest_path)
+
     # --- Case 1: Image sent as document ---
     if reply.document and reply.document.mime_type and reply.document.mime_type.startswith("image/"):
+        tmp_path = await client.download_media(reply.document)
+        save_local_watermark(tmp_path)
         await db.set_watermark(reply.document.file_id)
-        return await message.reply("✅ Watermark saved successfully.")
+        os.remove(tmp_path)
+        return await message.reply("✅ Watermark saved successfully to local file.")
 
     # --- Case 2: Image sent as photo (compressed) ---
     elif reply.photo:
         tmp_path = f"/tmp/watermark_{user_id}.jpg"
         await client.download_media(reply.photo.file_id, file_name=tmp_path)
+        save_local_watermark(tmp_path)
 
         sent = await message.reply_document(tmp_path, caption="Watermark Uploaded ✅")
         file_id = sent.document.file_id
 
         await db.set_watermark(file_id)
         os.remove(tmp_path)
-        return await message.reply("✅ Watermark saved successfully.")
+        return await message.reply("✅ Watermark saved successfully to local file.")
 
     # --- Case 3: Image URL ---
     elif reply.text and reply.text.lower().startswith(("http://", "https://")):

@@ -197,15 +197,14 @@ class AniLister:
                 return resp_json.get('data', {}).get('Media', {}) or {}
 
             elif res_code == 429:
-                # Too many requests — wait and retry
-                retry_after = int(res_heads.get('Retry-After', 5))
-                await asleep(retry_after)
-                return await self.get_anidata()
+                # Too many requests — trigger Jikan fallback directly
+                await rep.report(f"AniList API Rate Limit (429). Falling back to Jikan API.", "warning", log=False)
+                return await self.fetch_jikan_fallback()
 
             elif res_code in [500, 501, 502]:
-                # Server-side error — wait and retry
-                await asleep(5)
-                return await self.get_anidata()
+                # Server-side error — wait and retry once
+                await rep.report(f"AniList Server Error: {res_code}. Falling back to Jikan API.", "warning", log=False)
+                return await self.fetch_jikan_fallback()
 
             # Other errors — log and try Jikan API fallback
             await rep.report(f"AniList API Error: {res_code}. Falling back to Jikan API.", "warning", log=False)
