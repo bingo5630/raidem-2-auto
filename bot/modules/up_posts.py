@@ -50,7 +50,21 @@ async def upcoming_animes():
             chunks = []
             current_chunk = header
 
+            whitelist_map = await db.list_all_anime_channels()
+            whitelist = list(whitelist_map.keys()) if whitelist_map else []
+            mapped_animes = []
+
             for i in aniContent:
+                # Compare title to whitelist
+                is_mapped = False
+                for w in whitelist:
+                    if w.lower() in i["title"].lower():
+                        is_mapped = True
+                        break
+
+                if not is_mapped:
+                    continue
+
                 aname = TextEditor(i["title"])
                 await aname.load_anilist()
                 title = aname.adata.get("title", {}).get("english") or i["title"]
@@ -64,6 +78,12 @@ async def upcoming_animes():
                     "────────────────────\n"
                 )
 
+                mapped_animes.append(entry)
+
+            if not mapped_animes:
+                return
+
+            for entry in mapped_animes:
                 # Telegram Caption limit is 1024. Using 1000 for safety buffer.
                 if len(current_chunk) + len(entry) > 1000:
                     chunks.append(current_chunk)
