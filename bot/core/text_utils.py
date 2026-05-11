@@ -27,10 +27,10 @@ CAPTION_FORMAT = """
 <b>━━━━━━━━━━━━━━━━━━━</b>
 <b>➥ 𝐒ᴇᴀsᴏɴ: {season_number}
 <b>➤ 𝐄ᴘɪsᴏᴅᴇ {ep_no}</b>
-<b>➤ 𝐐ᴜᴀʟɪᴛʏ: 480ᴘ | 720ᴘ | 1080ᴘ | Hᴅʀɪᴘ</b>
+<b>➤ 𝐐ᴜᴀʟɪᴛʏ: 480ᴘ | 720ᴘ | 1080ᴘ</b>
 <b>➥ 𝐀ᴜᴅɪᴏ: {lang_info}</b>
 <b>━━━━━━━━━━━━━━━━━━━</b>
-<blockquote><b>≡ ᴘᴏᴡᴇʀᴇᴅ ʙʏ <a href='https://t.me/Anime_Raven'>𝐀ɴɪᴍᴇ  ʀᴀᴠᴇɴ</a></b></blockquote>
+<blockquote><b>≡ ᴘᴏᴡᴇʀᴇᴅ ʙʏ <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ</a></b></blockquote>
 """
 
 
@@ -422,12 +422,12 @@ class TextEditor:
             processed_title = cut[:last_space] if last_space != -1 else cut
 
         return (
-            f"[S{anime_season}] "
+            f"[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] "
+            f"[S-{anime_season}] "
             f"[EP-{str(ep_number).zfill(2)}] "
             f"{processed_title} "
-            f"{'['+qual+'p]' if qual else ''}"
-            f"{'['+codec.upper()+']' if codec else ''} "
-            f"[{lang}] @Anime_Raven.mkv"
+            f"[{qual}p] "
+            f"Hindi Subbed.mp4"
         )
 
     @handle_logs

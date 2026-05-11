@@ -72,7 +72,7 @@ async def upcoming_animes():
                 time_12 = to_12hr(i["time"])
 
                 entry = (
-                    f"<blockquote><b>››  <a href='https://t.me/Anime_Raven'>{title}</a></b></blockquote>\n"
+                    f"<blockquote><b>››  <a href='https://t.me/HellFire_Academy_Official'>{title}</a></b></blockquote>\n"
                     f"<b>›› ᴛɪᴍᴇ : {time_12}</b>\n"
                     f"<b>›› sᴛᴀᴛᴜs : ⏳ Upcoming</b>\n"
                     "────────────────────\n"

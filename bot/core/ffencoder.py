@@ -109,13 +109,13 @@ class FFEncoder:
 
                 progress_str = f"""> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}
 
-<blockquote>‣ <b>Status :</b> <i>Encoding</i>
-    <code>[{bar}]</code> {percent}%</blockquote>
-<blockquote>   ‣ <b>Size :</b> {convertBytes(ensize)} out of ~ {convertBytes(tsize)}
+<blockquote>‣ <b>Status :</b> <b>Encoding</b>
+    <code>[{bar}]</code> {percent}%
+   ‣ <b>Size :</b> {convertBytes(ensize)} out of ~ {convertBytes(tsize)}
     ‣ <b>Speed :</b> {convertBytes(speed)}/s
     ‣ <b>Time Took :</b> {convertTime(diff)}
-    ‣ <b>Time Left :</b> {convertTime(eta)}</blockquote>
-<blockquote>‣ <b>File(s) Encoded:</b> <code>{Var.QUALS.index(self.__qual)} / {len(Var.QUALS)}</code></blockquote>"""
+    ‣ <b>Time Left :</b> {convertTime(eta)}
+‣ <b>File(s) Encoded:</b> <code>{Var.QUALS.index(self.__qual)} / {len(Var.QUALS)}</code></blockquote>"""
                 try:
                     await editMessage(self.message, progress_str)
                 except Exception:
@@ -267,11 +267,11 @@ class FFEncoder:
 
         # global metadata
         ffcode += (
-            " -metadata title='By Anime Raven' "
-            "-metadata author='By Anime Raven' "
-            "-metadata:s:s title='By Anime Raven' "
-            "-metadata:s:a title='By Anime Raven' "
-            "-metadata:s:v title='By Anime Raven' "
+            " -metadata title='By HellFire_Academy' "
+            "-metadata author='By HellFire_Academy' "
+            "-metadata:s:s title='By HellFire_Academy' "
+            "-metadata:s:a title='By HellFire_Academy' "
+            "-metadata:s:v title='By HellFire_Academy' "
         )
 
         ffcode += f" '{out_npath}'"

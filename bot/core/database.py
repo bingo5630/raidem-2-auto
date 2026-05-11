@@ -204,7 +204,7 @@ class MongoDB:
         data = await self.channel_button_link_data.find_one({})
         if data:
             return data.get('button_name'), data.get('button_link')
-        return ' Channel', 'https://t.me/ANIME_RAVEN'
+        return ' Channel', 'https://t.me/HellFire_Academy_Official'
 
 
     # DELETE TIMER SETTINGS
