@@ -58,7 +58,7 @@ class TgUploader:
             await rep.report(f"[download_thumbnail] Error: {e}", "warning", log=False)
         return None
 
-    async def upload(self, path: str, qual: str):
+    async def upload(self, path: str, qual: str, delete_after: bool = True):
         """Main upload function with dual-session handling for 2GB+ files."""
         if not os.path.exists(path):
             await rep.report(f"File not found: {path}", "error")
@@ -136,10 +136,11 @@ class TgUploader:
 
         finally:
             # Clean up
-            try:
-                await aioremove(path)
-            except Exception:
-                pass
+            if delete_after:
+                try:
+                    await aioremove(path)
+                except Exception:
+                    pass
 
             if thumbnail == "temp_thumb.jpg" and os.path.exists(thumbnail):
                 try:

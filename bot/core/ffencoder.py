@@ -203,6 +203,10 @@ class FFEncoder:
             if wm and (wm.startswith("http://") or wm.startswith("https://")):
                 local_wm = await self.download_watermark(wm)
                 watermark = local_wm if local_wm else None
+            # Also check for a local fallback watermark set via commands
+            local_fallback = ospath.join("bot", "utils", "watermark.png")
+            if not watermark and ospath.exists(local_fallback):
+                watermark = local_fallback
         except Exception:
             LOGS.exception("Error fetching/downloading watermark. Proceeding without it.")
             watermark = None

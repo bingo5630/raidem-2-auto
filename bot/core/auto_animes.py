@@ -292,7 +292,12 @@ async def get_animes(name, torrent, force=False):
                 await asyncio.sleep(1.5)
 
                 try:
-                    msg = await TgUploader(stat_msg, poster_url=actual_poster_url).upload(out_path, qual)
+                    # Do not delete the file yet if we still need it for cascade encoding
+                    delete_after = True
+                    if qual in ['1080', '720']:
+                        delete_after = False
+
+                    msg = await TgUploader(stat_msg, poster_url=actual_poster_url).upload(out_path, qual, delete_after=delete_after)
                 except Exception as e:
                     await rep.report(f"Upload Error ({qual}p): {e}", "error")
                     await safe_telegram_call(stat_msg.delete)
