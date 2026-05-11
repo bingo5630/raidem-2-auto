@@ -88,8 +88,8 @@ class TgUploader:
             
             if upload_mode == "document":
                 # For document mode: strictly use `/sthumb` document thumbnail
-                thumb_path = ospath.join("bot", "utils", "thumb.jpg")
-                if ospath.exists(thumb_path) and os.path.getsize(thumb_path) > 0:
+                thumb_path = os.path.join("bot", "utils", "thumb.jpg")
+                if os.path.exists(thumb_path) and os.path.getsize(thumb_path) > 0:
                     thumbnail = thumb_path
                 else:
                     thumbnail = None

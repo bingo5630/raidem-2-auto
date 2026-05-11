@@ -241,8 +241,9 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
 async def translate_subtitle_file(file_path, api_pool, update_callback=None):
     print(f"Starting translation of {file_path}")
     try:
-        with open(file_path, "r", encoding="utf-8-sig", errors="ignore") as f:
-            content = f.read()
+        import aiofiles
+        async with aiofiles.open(file_path, "r", encoding="utf-8-sig", errors="ignore") as f:
+            content = await f.read()
 
         header, events = parse_ass(content)
 
@@ -284,8 +285,8 @@ async def translate_subtitle_file(file_path, api_pool, update_callback=None):
         translated_content = "\n".join(header) + "\n" + "\n".join(final_events)
 
         output_filename = os.path.splitext(file_path)[0] + "_translated.ass"
-        with open(output_filename, "w", encoding="utf-8") as f:
-            f.write(translated_content)
+        async with aiofiles.open(output_filename, "w", encoding="utf-8") as f:
+            await f.write(translated_content)
 
         return output_filename
     except Exception as e:

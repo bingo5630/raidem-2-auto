@@ -271,8 +271,8 @@ async def get_animes(name, torrent, force=False):
                 await rep.report(f"Starting Encode for {qual}p...", "info")
 
                 try:
-                    # Always use the exact video file inside the downloaded directory to avoid IsADirectoryError crashes
-                    input_file = master_dl_path
+                    # Cascade Pipeline: Use the newly generated 1080p master for 720p/480p encoding.
+                    input_file = out_paths.get('1080') if not is_master else master_dl_path
 
                     encoder = FFEncoder(stat_msg, input_file, filename, qual, is_master=is_master, sub_path=translated_sub_path)
                     out_path = await encoder.start_encode()
@@ -338,7 +338,24 @@ async def get_animes(name, torrent, force=False):
             if ffLock.locked():
                 ffLock.release()
             await safe_telegram_call(stat_msg.delete)
-            await aioremove(dl)
+
+            # Final Cleanup: Remove original torrent and all generated encoded files
+            import shutil
+            if ospath.isdir(dl):
+                shutil.rmtree(dl, ignore_errors=True)
+            else:
+                try:
+                    await aioremove(dl)
+                except Exception:
+                    pass
+
+            for out_f in out_paths.values():
+                try:
+                    if ospath.exists(out_f):
+                        await aioremove(out_f)
+                except Exception:
+                    pass
+
             if ospath.exists(sub_path): await aioremove(sub_path)
             if translated_sub_path and ospath.exists(translated_sub_path): await aioremove(translated_sub_path)
 
