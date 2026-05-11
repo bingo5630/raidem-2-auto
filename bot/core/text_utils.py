@@ -179,35 +179,80 @@ class AniLister:
 
     async def get_anidata(self):
         """Fetch anime data with retries on 404, 429, and server errors."""
-        res_code, resp_json, res_heads = await self.post_data()
-
-        # Retry by reducing year until 2020
-        while res_code == 404 and self.__ani_year > 2020:
-            self.__update_vars()
-            await rep.report(f"AniList Query Name: {self.__ani_name}, Retrying with {self.__ani_year}", "warning", log=False)
+        try:
             res_code, resp_json, res_heads = await self.post_data()
 
-        # If still 404, try without the year filter
-        if res_code == 404:
-            self.__update_vars(year=False)
-            res_code, resp_json, res_heads = await self.post_data()
+            # Retry by reducing year until 2020
+            while res_code == 404 and self.__ani_year > 2020:
+                self.__update_vars()
+                await rep.report(f"AniList Query Name: {self.__ani_name}, Retrying with {self.__ani_year}", "warning", log=False)
+                res_code, resp_json, res_heads = await self.post_data()
 
-        if res_code == 200:
-            return resp_json.get('data', {}).get('Media', {}) or {}
+            # If still 404, try without the year filter
+            if res_code == 404:
+                self.__update_vars(year=False)
+                res_code, resp_json, res_heads = await self.post_data()
 
-        elif res_code == 429:
-            # Too many requests — wait and retry
-            retry_after = int(res_heads.get('Retry-After', 5))
-            await asleep(retry_after)
-            return await self.get_anidata()
+            if res_code == 200:
+                return resp_json.get('data', {}).get('Media', {}) or {}
 
-        elif res_code in [500, 501, 502]:
-            # Server-side error — wait and retry
-            await asleep(5)
-            return await self.get_anidata()
+            elif res_code == 429:
+                # Too many requests — wait and retry
+                retry_after = int(res_heads.get('Retry-After', 5))
+                await asleep(retry_after)
+                return await self.get_anidata()
 
-        # Other errors — log and return empty
-        await rep.report(f"AniList API Error: {res_code}", "error", log=False)
+            elif res_code in [500, 501, 502]:
+                # Server-side error — wait and retry
+                await asleep(5)
+                return await self.get_anidata()
+
+            # Other errors — log and try Jikan API fallback
+            await rep.report(f"AniList API Error: {res_code}. Falling back to Jikan API.", "warning", log=False)
+            return await self.fetch_jikan_fallback()
+        except Exception as e:
+            await rep.report(f"AniList Exception: {e}. Falling back to Jikan API.", "error", log=False)
+            return await self.fetch_jikan_fallback()
+
+    async def fetch_jikan_fallback(self):
+        """Fetch fallback data from Jikan API when AniList fails."""
+        try:
+            import urllib.parse
+            url_name = urllib.parse.quote(self.__ani_name)
+            url = f"https://api.jikan.moe/v4/anime?q={url_name}&limit=1"
+            async with ClientSession() as sess:
+                async with sess.get(url) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data.get("data") and len(data["data"]) > 0:
+                            anime = data["data"][0]
+                            # Map Jikan data to AniList format structure
+                            genres_mapped = [g.get("name") for g in anime.get("genres", [])] if anime.get("genres") else []
+
+                            return {
+                                "id": anime.get("mal_id"),
+                                "title": {
+                                    "english": anime.get("title_english"),
+                                    "romaji": anime.get("title"),
+                                    "native": anime.get("title_japanese")
+                                },
+                                "description": anime.get("synopsis"),
+                                "status": anime.get("status"),
+                                "episodes": anime.get("episodes"),
+                                "averageScore": int(anime.get("score") * 10) if anime.get("score") else None,
+                                "genres": genres_mapped,
+                                "season": anime.get("season"),
+                                "seasonYear": anime.get("year"),
+                                "format": anime.get("type"),
+                                "is_jikan_fallback": True, # Marker to use custom image logic
+                                "coverImage": {
+                                    "large": anime.get("images", {}).get("jpg", {}).get("large_image_url")
+                                }
+                            }
+        except Exception as e:
+            await rep.report(f"Jikan Fallback Error: {e}", "error", log=False)
+
+        # Absolute fallback to prevent crash
         return {}
 
 class TextEditor:
@@ -283,6 +328,12 @@ class TextEditor:
 
     @handle_logs
     async def get_poster(self):
+        # Prefer Jikan cover if it fell back to Jikan
+        if self.adata.get("is_jikan_fallback"):
+            jikan_cover = self.adata.get("coverImage", {}).get("large")
+            if jikan_cover:
+                return jikan_cover
+
         if anime_id := await self.get_id():
             return f"https://img.anili.st/media/{anime_id}"
         return "https://i.ibb.co/WvV8cmGc/photo-2025-05-06-02-54-16-7520721484596117512.jpg"
