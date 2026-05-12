@@ -108,6 +108,9 @@ class TgUploader:
                 if self.poster_url:
                     thumbnail = await self.download_thumbnail(self.poster_url)
 
+                if thumbnail and not os.path.exists(thumbnail):
+                    thumbnail = None
+
                 sent = await self.__client.send_video(
                     chat_id=Var.FILE_STORE,
                     video=path,
