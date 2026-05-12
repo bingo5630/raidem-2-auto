@@ -128,10 +128,16 @@ class TgUploader:
                 if thumbnail and not os.path.exists(thumbnail):
                     thumbnail = None
 
+                # Map dimensions based on quality
+                dimensions = {"1080": (1920, 1080), "720": (1280, 720), "480": (854, 480)}
+                w, h = dimensions.get(str(self.__qual), (1280, 720))
+
                 sent = await self.__client.send_video(
                     chat_id=Var.FILE_STORE,
                     video=path,
                     thumb=thumbnail,
+                    width=w,       # Explicitly passed
+                    height=h,      # Explicitly passed
                     caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name.replace('[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] ', '')}",
                     progress=self.progress_status,
                     supports_streaming=True
