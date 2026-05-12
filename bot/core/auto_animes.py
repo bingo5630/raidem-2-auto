@@ -373,6 +373,13 @@ async def get_animes(name, torrent, force=False):
                 except Exception:
                     pass
 
+            # Remove any lingering compressed thumbnails
+            if ospath.exists("compressed_thumb.jpg"):
+                try:
+                    await aioremove("compressed_thumb.jpg")
+                except Exception:
+                    pass
+
         ani_cache['completed'].add(ani_id)
 
     except Exception:

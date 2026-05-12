@@ -44,16 +44,33 @@ class TgUploader:
         self.poster_url = poster_url
 
     async def download_thumbnail(self, url: str):
-        """Download thumbnail if it's a URL and return local path."""
-        temp_path = "temp_thumb.jpg"
+        """Download thumbnail if it's a URL, compress it for Telegram, and return local path."""
+        temp_path = "raw_thumb.jpg"
+        compressed_path = "compressed_thumb.jpg"
+
+        # Avoid re-downloading if compressed thumb already exists from a previous upload
+        if os.path.exists(compressed_path):
+            return compressed_path
+
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
                 async with session.get(url) as resp:
                     if resp.status == 200:
                         async with aiofiles.open(temp_path, "wb") as f:
                             await f.write(await resp.read())
+
                         if os.path.getsize(temp_path) > 0:
-                            return temp_path
+                            # Compress for Telegram using PIL
+                            from PIL import Image
+                            img = Image.open(temp_path)
+                            img = img.convert("RGB")
+                            img.thumbnail((320, 320)) # Force Telegram's expected dimensions
+                            img.save(compressed_path, format="JPEG", quality=80) # Force size under 200KB
+
+                            # Clean up the raw file
+                            os.remove(temp_path)
+
+                            return compressed_path
         except Exception as e:
             await rep.report(f"[download_thumbnail] Error: {e}", "warning", log=False)
         return None
@@ -145,11 +162,12 @@ class TgUploader:
                 except Exception:
                     pass
 
-            if thumbnail == "temp_thumb.jpg" and os.path.exists(thumbnail):
-                try:
-                    os.remove(thumbnail)
-                except Exception:
-                    pass
+            if delete_after:
+                if thumbnail in ["temp_thumb.jpg", "compressed_thumb.jpg"] and os.path.exists(thumbnail):
+                    try:
+                        os.remove(thumbnail)
+                    except Exception:
+                        pass
 
     async def progress_status(self, current, total):
         """Progress bar updater for upload."""
