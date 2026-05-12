@@ -382,7 +382,7 @@ async def post_channel_info_delayed(
     source: str | None = None
 ):
 
-    await asyncio.sleep(1100)
+    await asyncio.sleep(2100)
 
     anime_name = (anime_name or "").lower().strip()
     anime_title = anime_name

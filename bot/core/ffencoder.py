@@ -224,7 +224,7 @@ class FFEncoder:
                 temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
                 import shutil
                 shutil.copy2(self.sub_path, temp_sub_path)
-                force_style = "FontName=AHS BestFont,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,Bold=0,Italic=0,Outline=2,Shadow=1,MarginV=30,Alignment=2,WrapStyle=1"
+                force_style = "FontName=AHS BestFont,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,BackColour=&H80000000,Bold=0,Italic=0,Outline=2,Shadow=1,BorderStyle=1,MarginV=30,Alignment=2,WrapStyle=1"
                 subtitle_filter = f"subtitles='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
 
             if watermark and ospath.exists(watermark):
