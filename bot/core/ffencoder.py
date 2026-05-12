@@ -53,7 +53,7 @@ if not ospath.exists("encode"):
 
 
 class FFEncoder:
-    def __init__(self, message, path, name, qual, is_master=False, sub_path=None):
+    def __init__(self, message, path, name, qual, is_master=False, sub_path=None, poster_url=None):
         # why: keep state
         self.__proc = None
         self.is_cancelled = False
@@ -67,6 +67,7 @@ class FFEncoder:
         self.__start_time = time()
         self.is_master = is_master
         self.sub_path = sub_path
+        self.poster_url = poster_url
 
     async def progress(self):
         # why: report progress using ffmpeg -progress output
@@ -261,8 +262,18 @@ class FFEncoder:
                 ffcode += f" {ffargs[self.__qual]} "
 
         # Embed local cover art if exists
-        thumb_path = ospath.join("bot", "utils", "thumb.jpg")
-        if ospath.exists(thumb_path):
+        upload_mode = await db.get_upload_mode()
+        thumb_path = None
+
+        if upload_mode == "document":
+            t_path = ospath.join("bot", "utils", "thumb.jpg")
+            if ospath.exists(t_path):
+                thumb_path = t_path
+        else:
+            if self.poster_url:
+                thumb_path = await self.download_watermark(self.poster_url)
+
+        if thumb_path and ospath.exists(thumb_path):
             ffcode += f" -attach '{thumb_path}' -metadata:s:t mimetype=image/jpeg "
 
         # global metadata

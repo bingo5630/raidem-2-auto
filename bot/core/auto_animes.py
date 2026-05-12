@@ -275,7 +275,7 @@ async def get_animes(name, torrent, force=False):
                     # Cascade Pipeline: Use the newly generated 1080p master for 720p/480p encoding.
                     input_file = out_paths.get('1080') if not is_master else master_dl_path
 
-                    encoder = FFEncoder(stat_msg, input_file, filename, qual, is_master=is_master, sub_path=translated_sub_path)
+                    encoder = FFEncoder(stat_msg, input_file, filename, qual, is_master=is_master, sub_path=translated_sub_path, poster_url=actual_poster_url)
                     out_path = await encoder.start_encode()
                     out_paths[qual] = out_path
                 except Exception as e:
