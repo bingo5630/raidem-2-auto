@@ -422,12 +422,7 @@ class TextEditor:
             processed_title = cut[:last_space] if last_space != -1 else cut
 
         return (
-            f"[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] "
-            f"[S-{anime_season}] "
-            f"[EP-{str(ep_number).zfill(2)}] "
-            f"{processed_title} "
-            f"[{qual}p] "
-            f"Hindi Subbed.mp4"
+            f"[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] [S-{anime_season}] [EP-{str(ep_number).zfill(2)}] {processed_title} [{qual}p] Hindi Subbed.mp4"
         )
 
     @handle_logs

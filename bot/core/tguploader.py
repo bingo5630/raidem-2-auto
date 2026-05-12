@@ -98,7 +98,7 @@ class TgUploader:
                     chat_id=Var.FILE_STORE,
                     document=path,
                     thumb=thumbnail,
-                    caption=f"<b><a href=\"https://t.me/HellFire_Academy_Official\">[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b>\n\n<i>{self.__name}</i>",
+                    caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name}",
                     force_document=True,
                     progress=self.progress_status
                 )
@@ -112,7 +112,7 @@ class TgUploader:
                     chat_id=Var.FILE_STORE,
                     video=path,
                     thumb=thumbnail,
-                    caption=f"<b><a href=\"https://t.me/HellFire_Academy_Official\">[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b>\n\n<i>{self.__name}</i>",
+                    caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name}",
                     progress=self.progress_status,
                     supports_streaming=True
                 )
