@@ -261,20 +261,6 @@ class FFEncoder:
                 ffcode += " -map 0:v -map 0:a"
                 ffcode += f" {ffargs[self.__qual]} "
 
-        # Embed local cover art if exists
-        upload_mode = await db.get_upload_mode()
-        thumb_path = None
-
-        if upload_mode == "document":
-            t_path = ospath.join("bot", "utils", "thumb.jpg")
-            if ospath.exists(t_path):
-                thumb_path = t_path
-        else:
-            if self.poster_url:
-                thumb_path = await self.download_watermark(self.poster_url)
-
-        if thumb_path and ospath.exists(thumb_path):
-            ffcode += f" -attach '{thumb_path}' -metadata:s:t mimetype=image/jpeg "
 
         # global metadata
         ffcode += (
