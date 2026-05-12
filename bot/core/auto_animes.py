@@ -366,6 +366,13 @@ async def get_animes(name, torrent, force=False):
             if ospath.exists(sub_path): await aioremove(sub_path)
             if translated_sub_path and ospath.exists(translated_sub_path): await aioremove(translated_sub_path)
 
+            # Remove any lingering temp subtitle files from encode dir
+            for temp_sub in glob.glob("encode/temp_sub_*.ass"):
+                try:
+                    await aioremove(temp_sub)
+                except Exception:
+                    pass
+
         ani_cache['completed'].add(ani_id)
 
     except Exception:
