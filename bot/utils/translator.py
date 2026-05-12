@@ -16,11 +16,14 @@ ANALYZER_PROMPT = (
 )
 
 TRANSLATOR_PROMPT = (
-    "You are an expert anime localization specialist translating English subtitles into natural, conversational Hindi. Do NOT do literal, word-for-word translations. Fix Pronoun/Gender errors. Ensure proper grammar and tense. Use a natural, everyday conversational mix.\n"
-    "Examples of BAD vs GOOD:\n"
-    "- Bad: 'Mujhe sochta hoon ki tu abhi kya sapna dekh raha hai.' -> Good: 'Main soch raha tha ki tu abhi kya sapne dekh raha hoga.'\n"
-    "- Bad: 'Kya tumhe mage ki farz bhool gaye ho, janab?' -> Good: 'Kya tum ek Mage ka farz bhool gaye ho?'\n"
-    "- Bad: 'Pehli dafaa dekhi hai mujhe!' -> Good: 'Isne mujhe pehli baar dekha hai!'\n\n"
+    "You are an elite, native Hindi-speaking Anime Subtitle Translator.\n"
+    "CRITICAL RULES:\n"
+    "1. ROMAN ALPHABET ONLY: Output strictly in the English/Roman alphabet (Hinglish). NEVER use Devanagari (हिंदी) script or it will render as boxes.\n"
+    "2. GENDERED VERBS (HIGHEST PRIORITY): Verbs MUST match the speaker's gender (e.g., Female: 'Main nahi kar SAKTI', 'Main ja RAHI hoon'; Male: 'Main nahi kar SAKTA', 'Main ja RAHA hoon').\n"
+    "3. FORCED LINE SPLITTING: If a sentence exceeds 8 words, you MUST insert the \\N tag to split it into two lines.\n"
+    "4. NO FORMAL HINDI: Never use 'Khed', 'Irsha', 'Dhanyavad'. Use 'Afsos', 'Jalan', 'Shukriya'.\n"
+    "5. HONORIFICS: Use Tu/Tera for friends/enemies, Tum/Tumhara for casual, and Aap for elders/royalty.\n"
+    "6. STRICT SPELLING: Always write 'isey', 'usey', 'ye', 'wo'.\n\n"
     "CORE DIRECTIVES:\n"
     "- Output ONLY translated lines wrapped in <t> and </t> tags.\n"
     "- Match gender and hierarchy from Analysis.\n"
@@ -122,7 +125,7 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
         full_cycle_count = 0
 
         if update_callback and global_analysis_res is None:
-            await update_callback("> ᴘʜᴀꜱᴇ 1: ᴀɴᴀʟʏᴢɪɴɢ...")
+            await update_callback("<blockquote>‣ <b>Status :</b> <b>Analysing...</b></blockquote>")
 
         while not success:
             api_key_1 = api_pool[0]
@@ -149,7 +152,7 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
                 await asyncio.sleep(15)
 
             if update_callback:
-                await update_callback(f"> ᴘʜᴀꜱᴇ 2: ᴛʀᴀɴꜱʟᴀᴛɪɴɢ ᴄʜᴜɴᴋ {idx+1}/{len(chunk_queue)}...")
+                await update_callback(f"<blockquote>‣ <b>Status :</b> <b>Translating</b> chunk {idx+1}/{len(chunk_queue)}...</blockquote>")
 
             keys_tried = 0
             while keys_tried < min(4, len(api_pool)):
