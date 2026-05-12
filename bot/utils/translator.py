@@ -172,7 +172,12 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
             while keys_tried < min(4, len(api_pool)):
                 api_key_trans = api_pool[trans_key_idx]
                 try:
-                    res = await call_groq(TRANSLATOR_PROMPT, f"Analysis:\n{global_analysis_res}\n\nLines to Translate:\n{xml_chunk}", api_key_trans, temperature=temp)
+                    user_msg = (
+                        f"Analysis:\n{global_analysis_res}\n\n"
+                        f"CRITICAL: Do not overuse casual fillers. Only use 'yaar' if it makes explicit sense based on extreme closeness; otherwise keep it natural Hinglish. DO NOT add formal honorifics like 'bhai' unless absolutely natural (e.g., 'Will bhai' makes no sense). address characters naturally. Sound like normal people, not a parody of slang.\n\n"
+                        f"Lines to Translate:\n{xml_chunk}"
+                    )
+                    res = await call_groq(TRANSLATOR_PROMPT, user_msg, api_key_trans, temperature=temp)
                 except Exception:
                     res = "❌"
 
