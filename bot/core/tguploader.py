@@ -45,7 +45,7 @@ class TgUploader:
         self.poster_url = poster_url
 
     async def download_thumbnail(self, url: str):
-        """Download thumbnail if it's a URL, compress it for Telegram, and return local path."""
+        """Download thumbnail if it's a URL or Telegram File ID, compress it, and return local path."""
         temp_path = "raw_thumb.jpg"
         compressed_path = "compressed_thumb.jpg"
 
@@ -54,24 +54,29 @@ class TgUploader:
             return compressed_path
 
         try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
-                async with session.get(url) as resp:
-                    if resp.status == 200:
-                        async with aiofiles.open(temp_path, "wb") as f:
-                            await f.write(await resp.read())
+            # 🚀 SMART DOWNLOADER: Checks if it's a web link or a Telegram File ID
+            if url.startswith("http://") or url.startswith("https://"):
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+                    async with session.get(url) as resp:
+                        if resp.status == 200:
+                            async with aiofiles.open(temp_path, "wb") as f:
+                                await f.write(await resp.read())
+            else:
+                # It's a Telegram File ID, download directly using Pyrogram
+                await self.__client.download_media(url, file_name=temp_path)
 
-                        if os.path.getsize(temp_path) > 0:
-                            # Compress for Telegram using PIL
-                            from PIL import Image
-                            img = Image.open(temp_path)
-                            img = img.convert("RGB")
-                            img.thumbnail((320, 320)) # Force Telegram's expected dimensions
-                            img.save(compressed_path, format="JPEG", quality=80) # Force size under 200KB
+            # Compress for Telegram using PIL
+            if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+                from PIL import Image
+                img = Image.open(temp_path)
+                img = img.convert("RGB")
+                img.thumbnail((320, 320)) # Force Telegram's expected dimensions
+                img.save(compressed_path, format="JPEG", quality=80) # Force size under 200KB
 
-                            # Clean up the raw file
-                            os.remove(temp_path)
+                # Clean up the raw file
+                os.remove(temp_path)
 
-                            return compressed_path
+                return compressed_path
         except Exception as e:
             await rep.report(f"[download_thumbnail] Error: {e}", "warning", log=False)
         return None
@@ -115,22 +120,21 @@ class TgUploader:
                 sent = await self.__client.send_document(
                     chat_id=Var.FILE_STORE,
                     document=path,
-                    thumb=thumbnail,  # FIXED: Changed from thumbnail=thumbnail
+                    thumb=thumbnail,  
                     caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name.replace('[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] ', '')}",
                     force_document=True,
                     progress=self.progress_status
                 )
             else:
-                # For video mode: strictly use poster URL via download or Anilist fallback
+                # For video mode: use poster URL/File ID or fallback
                 thumbnail = None
                 if self.poster_url:
                     thumbnail = await self.download_thumbnail(self.poster_url)
 
-                # 🔥 THE FALLBACK FIX: Agar URL fail ho gaya, toh bot ka default thumbnail use karo
+                # 🔥 THE FALLBACK FIX: Agar poster fetch fail hua, toh default thumbnail use karo
                 if not thumbnail:
                     fallback_thumb = os.path.join("bot", "utils", "thumb.jpg")
                     if os.path.exists(fallback_thumb) and os.path.getsize(fallback_thumb) > 0:
-                        # Ensure fallback is also compressed for Telegram rules
                         from PIL import Image
                         try:
                             img = Image.open(fallback_thumb).convert("RGB")
@@ -151,9 +155,9 @@ class TgUploader:
                 sent = await self.__client.send_video(
                     chat_id=Var.FILE_STORE,
                     video=path,
-                    thumb=thumbnail,  # FIXED: Changed from thumbnail=thumbnail
-                    width=w,       # Explicitly passed
-                    height=h,      # Explicitly passed
+                    thumb=thumbnail,  
+                    width=w,       
+                    height=h,      
                     caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name.replace('[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] ', '')}",
                     progress=self.progress_status,
                     supports_streaming=True
