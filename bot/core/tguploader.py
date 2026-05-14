@@ -126,6 +126,21 @@ class TgUploader:
                 if self.poster_url:
                     thumbnail = await self.download_thumbnail(self.poster_url)
 
+                # 🔥 THE FALLBACK FIX: Agar URL fail ho gaya, toh bot ka default thumbnail use karo
+                if not thumbnail:
+                    fallback_thumb = os.path.join("bot", "utils", "thumb.jpg")
+                    if os.path.exists(fallback_thumb) and os.path.getsize(fallback_thumb) > 0:
+                        # Ensure fallback is also compressed for Telegram rules
+                        from PIL import Image
+                        try:
+                            img = Image.open(fallback_thumb).convert("RGB")
+                            img.thumbnail((320, 320))
+                            comp_fallback = "compressed_fallback.jpg"
+                            img.save(comp_fallback, format="JPEG", quality=80)
+                            thumbnail = comp_fallback
+                        except Exception:
+                            thumbnail = fallback_thumb
+
                 if thumbnail and not os.path.exists(thumbnail):
                     thumbnail = None
 
@@ -170,7 +185,7 @@ class TgUploader:
                     pass
 
             if delete_after:
-                if thumbnail in ["temp_thumb.jpg", "compressed_thumb.jpg"] and os.path.exists(thumbnail):
+                if thumbnail in ["temp_thumb.jpg", "compressed_thumb.jpg", "compressed_fallback.jpg"] and os.path.exists(thumbnail):
                     try:
                         os.remove(thumbnail)
                     except Exception:
@@ -196,24 +211,4 @@ class TgUploader:
                 speed = current / diff if diff > 0 else 0
                 eta = round((total - current) / speed) if speed > 0 else 0
                 bar = floor(percent / 8) * "■" + (12 - floor(percent / 8)) * "□"
-                sys_status = get_vps_usage()
-
-                from .auto_animes import stylize_quote
-                formatted_name = f"“{self.__name.strip()}”"
-
-                progress_str = f"""> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}
-
-<blockquote>‣ <b>Status :</b> <b>Uploading</b>
-<code>[{bar}]</code> {percent}%
-‣ <b>Uploaded :</b> {convertBytes(current)} / {convertBytes(total)}
-‣ <b>Speed :</b> {convertBytes(speed)}/s
-‣ <b>Elapsed :</b> {convertTime(diff)}
-‣ <b>Remaining :</b> {convertTime(eta)}
-‣ <b>Encoded File(s):</b> <code>{Var.QUALS.index(self.__qual) if self.__qual in Var.QUALS else 0} / {len(Var.QUALS)}</code>
-‣ <b>System Load :</b> <code>{sys_status}</code></blockquote>
-
-<b>Powered By</b> <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ</a>
-"""
-                await editMessage(self.message, progress_str)
-            except Exception:
-                pass
+                sys_status
