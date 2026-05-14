@@ -1,4 +1,5 @@
-import re, os
+import re, os, glob, shutil, subprocess
+import time as t
 import asyncio
 from asyncio import gather, create_task, sleep as asleep, Event
 from asyncio.subprocess import PIPE
@@ -157,8 +158,8 @@ async def get_animes(name, torrent, force=False):
             season_no = aniInfo.pdata.get("season_number", 1)
             ep_no = aniInfo.pdata.get("episode_number", 1)
             bot_loop.create_task(
-    post_channel_info_delayed(anime_title, post_msg.id, season_no, ep_no, source=name)
-)
+                post_channel_info_delayed(anime_title, post_msg.id, season_no, ep_no, source=name)
+            )
 
             await safe_telegram_call(
                 bot.send_sticker,
@@ -209,9 +210,7 @@ async def get_animes(name, torrent, force=False):
             await rep.report("Starting Subtitle Extraction...", "info")
 
             # Temporary subtitle paths
-            import subprocess
             from bot.utils.translator import translate_subtitle_file
-            import time as t
 
             sub_path = ospath.join("encode", f"temp_sub_extract_{t.time()}.ass")
             translated_sub_path = None
@@ -219,7 +218,6 @@ async def get_animes(name, torrent, force=False):
             # Extract .ass subtitles
             dl_file = dl
             if ospath.isdir(dl):
-                import glob
                 files = glob.glob(ospath.join(dl, "*.mkv")) + glob.glob(ospath.join(dl, "*.mp4"))
                 if files: dl_file = files[0]
 
@@ -347,7 +345,6 @@ async def get_animes(name, torrent, force=False):
             await safe_telegram_call(stat_msg.delete)
 
             # Final Cleanup: Remove original torrent and all generated encoded files
-            import shutil
             if ospath.isdir(dl):
                 shutil.rmtree(dl, ignore_errors=True)
             else:
@@ -380,7 +377,7 @@ async def get_animes(name, torrent, force=False):
                 except Exception:
                     pass
 
-        ani_cache['completed'].add(ani_id)
+            ani_cache['completed'].add(ani_id)
 
     except Exception:
         await rep.report(format_exc(), "error")
