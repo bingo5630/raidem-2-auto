@@ -115,7 +115,7 @@ class TgUploader:
                 sent = await self.__client.send_document(
                     chat_id=Var.FILE_STORE,
                     document=path,
-                    thumbnail=thumbnail,
+                    thumb=thumbnail,  # FIXED: Changed from thumbnail=thumbnail
                     caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name.replace('[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] ', '')}",
                     force_document=True,
                     progress=self.progress_status
@@ -136,7 +136,7 @@ class TgUploader:
                 sent = await self.__client.send_video(
                     chat_id=Var.FILE_STORE,
                     video=path,
-                    thumbnail=thumbnail,
+                    thumb=thumbnail,  # FIXED: Changed from thumbnail=thumbnail
                     width=w,       # Explicitly passed
                     height=h,      # Explicitly passed
                     caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name.replace('[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] ', '')}",
