@@ -4,50 +4,37 @@ import os
 import asyncio
 
 ANALYZER_PROMPT = (
-    "Analyze the raw English subtitle lines and context. "
-    "Identify the speaker's gender and the social relationship/hierarchy between characters.\n"
-    "Hierarchy categories:\n"
-    "- elder_master: To Elders/Masters/Strangers\n"
-    "- formal: Between Two Elders/Formal\n"
-    "- friends: Friends/Siblings (Conversational)\n"
-    "- enemies: Enemies/Fights (Harsh)\n\n"
-    "Output ONLY a JSON object with these keys: "
-    "{\"gender\": \"male/female\", \"hierarchy\": \"elder_master/formal/friends/enemies\", \"tone\": \"casual/serious\", \"context\": \"summary\"}."
+    "You are a Scene Context Analyzer for an anime subtitle translation pipeline.\n"
+    "Analyze the following 10 lines of dialogue and output a highly accurate Scene Context Brief.\n\n"
+    "You MUST output a short text summary covering these 4 exact points:\n"
+    "1. Characters & Genders: Who is talking? (e.g., Male talking to Female, or Two Males).\n"
+    "2. Relationship & Dynamics: (e.g., Close Friends, Mother & Son, Enemies, Boss & Subordinate, Strangers).\n"
+    "3. Pronoun Rules: Specify EXACTLY how they should address each other in Hindi.\n"
+    "   - Use 'Tu' for close friends, siblings, or bitter enemies.\n"
+    "   - Use 'Tum' for casual acquaintances, first-time meetings, or regular conversations.\n"
+    "   - Use 'Aap' strictly for elders, parents, or high-respect figures.\n"
+    "4. Terminology Lock: Identify any fantasy/anime terms (e.g., Demon, Ghost, Magic, Skill, Guild, Monster). Instruct the translator to keep these words in ENGLISH.\n"
 )
 
 TRANSLATOR_PROMPT = (
-    "You are a top-tier Indian Anime Fansub Translator. Your goal is to make the subtitles sound like a natural, everyday conversation between Indian teenagers or young adults.\n\n"
-    "STEP 1: DEEP CONTEXT ANALYSIS (THINK BEFORE TRANSLATING)\n"
-    "Before translating a single word, deeply analyze the dialogue context:\n"
-    "- Who is speaking to whom? Are they friends, enemies, lovers, or strangers?\n"
-    "- What is the emotion? Is it anger, sadness, comedy, or casual talk?\n"
-    "- Dedicate your processing to understanding the vibe. DO NOT translate word-for-word. Translate the FEELING and the INTENT.\n\n"
-    "STEP 2: NATURAL, DAY-TO-DAY CONVERSATIONAL TONE\n"
-    "- Speak like a normal Indian person in 2026. Use casual, everyday Hinglish.\n"
-    "- CRITICAL AVOIDANCE: NEVER use old-fashioned, formal, or dictionary Hindi words (e.g., Avoid 'Khed', 'Kshama', 'Pratiksha', 'Chintit', 'Dhanyavad').\n"
-    "- PREFERRED WORDS: Use 'Afsos', 'Sorry/Maaf karna', 'Intezaar', 'Tension', 'Shukriya/Thanks'.\n"
-    "- Use natural fillers where appropriate (e.g., 'yaar', 'bhai', 'arey', 'pagal', 'kya bakwas hai').\n"
-    "- Example of Bad Translation: 'Mujhe pehli baar dekha hai.' (Too literal/robotic).\n"
-    "- Example of Good Translation: 'Kya tum mujhe pehli baar dekh rahe ho?' or 'Isne mujhe pehli baar dekha hai yaar.'\n\n"
-    "STEP 3: STRICT GENDER & GRAMMAR RULES\n"
-    "- Hindi verbs change based on gender. You MUST identify the gender of the speaker and the listener.\n"
-    "- If addressing or speaking as a female: Use feminine verbs (Example: 'Do you want to go back, Ladybug?' -> 'Kya tum apne forest wapas jaana chahti ho, Ladybug?' NOT chahta).\n"
-    "- If addressing or speaking as a male: Use masculine verbs ('Main nahi jaunga').\n\n"
-    "STEP 4: HARD TECHNICAL CONSTRAINTS (FAILURE CRASHES THE SYSTEM)\n"
-    "1. ROMAN ALPHABET ONLY: Output strictly in Hinglish (Roman English letters). NO Devanagari script ever.\n"
-    "2. FORCED LINE SPLITTING: If a translated sentence exceeds 8 words, you MUST use the \\N tag to break it into two lines for screen readability. (Example: 'Main nahi chahta tha ki \\N yeh sab mere sath ho.')\n"
-    "3. STRICT SPELLING: Always write 'isey', 'usey', 'ye', 'wo', 'mujhe', 'tujhe'.\n\n"
-    "Follow all steps meticulously for every single line.\n"
-    "CORE DIRECTIVES:\n"
-    "- Output ONLY translated lines wrapped in <t> and </t> tags.\n"
-    "- Match gender and hierarchy from Analysis.\n"
-    "- Strict Rule: You must translate every single line into conversational Hindi. Do not summarize, do not skip any line, and do not provide any extra text or explanations. The output MUST have the exact same number of lines as the input."
+    "You are a top-tier Indian Anime Fansub Translator. Translate the provided lines into conversational Hinglish (Roman alphabet).\n"
+    "Use the 'Scene Analysis' provided below to perfectly adapt the tone, gender, and relationship.\n\n"
+    "CRITICAL RULES (FAILURE CRASHES THE SYSTEM):\n"
+    "1. PRONOUNS & RESPECT: Strictly follow the Tu/Tum/Aap rule dictated by the Analysis. Do not mix them.\n"
+    "2. NATURAL HINGLISH: Speak like real Indian teenagers in 2026. Use words like 'isey', 'usey', 'arey', 'yaar' (only if close friends). \n"
+    "3. NO ROBOTIC REPETITION: Do not start every sentence with 'Mujhe', 'Main', or 'Toh'. Make the conversation flow naturally.\n"
+    "4. BANNED DICTIONARY WORDS: NEVER use formal dictionary Hindi (e.g., DO NOT use 'Khed', 'Kshama', 'Pratiksha', 'Chintit', 'Dhanyavad'). Use 'Afsos/Sorry', 'Maaf karna', 'Intezaar', 'Tension', 'Thanks/Shukriya'.\n"
+    "5. NO HINDI FANTASY TERMS: Keep anime/action terms in English! Write 'Demon', 'Ghost', 'Monster', 'Magic', 'Skill'. NEVER translate them to 'Bhoot', 'Rakshas', 'Pishach', or 'Jaadu'.\n"
+    "6. GENDERED VERBS: Ensure Hindi verbs perfectly match the speaker's gender (e.g., female says 'main aati hoon', male says 'main aata hoon').\n\n"
+    "FORMATTING RULES:\n"
+    "- Output ONLY the translated lines wrapped exactly in <t> and </t> tags.\n"
+    "- If a translated sentence exceeds 8 words, you MUST insert the \\N tag to split it into two lines for screen readability.\n"
+    "- You must return the EXACT same number of lines as provided. Do not merge or skip any lines."
 )
 
 def protect_tags(text):
     """Protects override tags from being translated by the AI."""
     placeholders = []
-    # Protect {\...} tags commonly found in ASS files
     tags = re.findall(r'\{[^\}]+\}', text)
     for i, tag in enumerate(tags):
         placeholder = f"__TAG_{i}__"
@@ -122,10 +109,7 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
 
     translated_texts = []
     idx = 0
-    trans_key_idx = min(1, len(api_pool) - 1)  # Use 2nd key for translation if available, else 1st
-
-    # Store initial analysis result
-    global_analysis_res = None
+    trans_key_idx = min(1, len(api_pool) - 1)
 
     while idx < len(chunk_queue):
         original_lines = to_translate[idx*10 : (idx+1)*10]
@@ -135,15 +119,20 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
         cleaned_chunk = "\n".join(cleaned_lines)
 
         success = False
-        temp = 0.2
+        temp = 0.3 # Slightly higher temperature for more natural conversational flow
         full_cycle_count = 0
+        
+        # RESET ANALYSIS FOR EVERY NEW CHUNK
+        current_chunk_analysis = None 
 
-        if update_callback and global_analysis_res is None:
-            await update_callback("<blockquote>‣ <b>Status :</b> <b>Analysing...</b></blockquote>")
+        if update_callback:
+            await update_callback(f"<blockquote>‣ <b>Status :</b> <b>Analysing Scene {idx+1}/{len(chunk_queue)}...</b></blockquote>")
 
         while not success:
             api_key_1 = api_pool[0]
-            if global_analysis_res is None:
+            
+            # PHASE 1: DEEP ANALYSIS OF THE CURRENT 10 LINES
+            if current_chunk_analysis is None:
                 try:
                     analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
                 except Exception:
@@ -159,11 +148,10 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
                     except Exception:
                         analysis_res = "❌"
                     if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
-                        analysis_res = '{"gender": "neutral", "hierarchy": "friends", "tone": "casual", "context": "general anime scene"}'
+                        analysis_res = "Context: Unknown. Use 'Tum' for general conversation. Keep terms like Demon/Ghost in English."
 
-                global_analysis_res = analysis_res
-                # Phase 1 delay done ONLY ONCE
-                await asyncio.sleep(15)
+                current_chunk_analysis = analysis_res
+                await asyncio.sleep(2) # Small delay to respect rate limits between Analyze and Translate
 
             if update_callback:
                 await update_callback(f"<blockquote>‣ <b>Status :</b> <b>Translating</b> chunk {idx+1}/{len(chunk_queue)}...</blockquote>")
@@ -173,9 +161,8 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
                 api_key_trans = api_pool[trans_key_idx]
                 try:
                     user_msg = (
-                        f"Analysis:\n{global_analysis_res}\n\n"
-                        f"CRITICAL: Do not overuse casual fillers. Only use 'yaar' if it makes explicit sense based on extreme closeness; otherwise keep it natural Hinglish. DO NOT add formal honorifics like 'bhai' unless absolutely natural (e.g., 'Will bhai' makes no sense). address characters naturally. Sound like normal people, not a parody of slang.\n\n"
-                        f"Lines to Translate:\n{xml_chunk}"
+                        f"--- SCENE ANALYSIS ---\n{current_chunk_analysis}\n\n"
+                        f"--- LINES TO TRANSLATE ---\n{xml_chunk}"
                     )
                     res = await call_groq(TRANSLATOR_PROMPT, user_msg, api_key_trans, temperature=temp)
                 except Exception:
@@ -207,15 +194,15 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
 
             if not success:
                 full_cycle_count += 1
-                if full_cycle_count >= 10:
-                    print(f"⚠️ Chunk {idx+1} failed 10 times. Falling back to original lines.")
+                if full_cycle_count >= 5: # Reduced fail loop so it doesn't get stuck forever
+                    print(f"⚠️ Chunk {idx+1} failed. Falling back to original lines.")
                     for orig in original_lines:
                         translated_texts.append(orig)
                     success = True
                     break
 
                 await asyncio.sleep(5)
-                temp = 0.2
+                temp = 0.3
 
         await asyncio.sleep(2)
         idx += 1
