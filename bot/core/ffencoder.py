@@ -1,4 +1,3 @@
-# file: encode/ffencoder.py
 from re import findall
 from math import floor
 from time import time
@@ -20,22 +19,22 @@ from bot.core.database import db
 from .func_utils import mediainfo, convertBytes, convertTime, editMessage
 from .reporter import rep
 
-# Encoding args
+# Encoding args (CLEANED: Removed -c:s copy to prevent dirty metadata clashes)
 ffargs = {
     '1080': (
         "-c:v libx264 -preset veryfast -crf 24 "
         "-pix_fmt yuv420p -movflags +faststart "
-        "-c:a libopus -b:a 96k -vbr on -c:s copy"
+        "-c:a libopus -b:a 96k -vbr on" 
     ),
     '720': (
         "-c:v libx264 -preset veryfast -crf 28 "
         "-pix_fmt yuv420p -movflags +faststart "
-        "-c:a libopus -b:a 80k -vbr on -c:s copy"
+        "-c:a libopus -b:a 80k -vbr on"
     ),
     '480': (
         "-c:v libx264 -preset veryfast -crf 32 "
         "-pix_fmt yuv420p -movflags +faststart "
-        "-c:a libopus -b:a 64k -vbr on -c:s copy"
+        "-c:a libopus -b:a 64k -vbr on"
     ),
     'HDRi': "-c copy"
 }
@@ -170,7 +169,7 @@ class FFEncoder:
             LOGS.exception("Could not create progress file")
 
         dl_npath = ospath.join("encode", "ffanimeadvin.mkv")
-        out_npath = ospath.join("encode", "ffanimeadvout.mkv")
+        out_npath = ospath.join("encode", "ffanimeadvout.mp4") # CHANGED TO MP4 CONTAINER TO PREVENT TRANSPARENT BOXES
 
         # handle directory input
         if ospath.isdir(self.dl_path):
@@ -242,31 +241,29 @@ class FFEncoder:
                 else:
                     filter_str += ";[ovr]copy[out_v]"
 
-                ffcode += f" -filter_complex \"{filter_str}\" -map \"[out_v]\" -map 0:a"
+                # ONLY Map Video and Audio. Drop everything else (-sn -map_metadata -1)
+                ffcode += f" -filter_complex \"{filter_str}\" -map \"[out_v]\" -map 0:a -sn -map_metadata -1"
                 ffcode += f" {ffargs[self.__qual]} "
             else:
                 if subtitle_filter:
-                    ffcode += f" -vf \"{subtitle_filter}\" -map 0:v -map 0:a"
+                    ffcode += f" -vf \"{subtitle_filter}\" -map 0:v -map 0:a -sn -map_metadata -1"
                 else:
-                    ffcode += " -map 0:v -map 0:a -map 0:s?"
+                    ffcode += " -map 0:v -map 0:a -sn -map_metadata -1"
                 ffcode += f" {ffargs[self.__qual]} "
         else:
-            # For compressed versions (720p, 480p), the input is the already-encoded 1080p master.
-            # Scale down the video without reapplying watermark/subtitles.
+            # For compressed versions (720p, 480p), the input is the already-encoded master.
             target_height = "720" if self.__qual == "720" else "480" if self.__qual == "480" else None
             if target_height:
-                ffcode += f" -vf 'scale=-2:{target_height}:flags=fast_bilinear' -map 0:v -map 0:a"
+                ffcode += f" -vf 'scale=-2:{target_height}:flags=fast_bilinear' -map 0:v -map 0:a -sn -map_metadata -1"
                 ffcode += f" {ffargs[self.__qual]} "
             else:
-                ffcode += " -map 0:v -map 0:a"
+                ffcode += " -map 0:v -map 0:a -sn -map_metadata -1"
                 ffcode += f" {ffargs[self.__qual]} "
-
 
         # global metadata
         ffcode += (
             " -metadata title='By HellFire_Academy' "
             "-metadata author='By HellFire_Academy' "
-            "-metadata:s:s title='By HellFire_Academy' "
             "-metadata:s:a title='By HellFire_Academy' "
             "-metadata:s:v title='By HellFire_Academy' "
         )
