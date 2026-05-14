@@ -1,6 +1,7 @@
 import aiohttp
 import aiofiles
-from time import time, sleep
+import asyncio
+from time import time
 from traceback import format_exc
 from math import floor
 from os import path as ospath, remove as osremove
@@ -147,14 +148,14 @@ class TgUploader:
 
         except FloodWait as e:
             await rep.report(f"FloodWait: sleeping {e.value}s", "warning", log=False)
-            await sleep(e.value + 2)
+            await asyncio.sleep(e.value + 2)
             return await self.upload(path, qual)
 
         except Exception as e:
             self.retry_count += 1
             if self.retry_count < self.max_retries:
                 await rep.report(f"Upload attempt {self.retry_count} failed, retrying: {str(e)}", "warning", log=False)
-                await sleep(5)
+                await asyncio.sleep(5)
                 return await self.upload(path, qual)
             else:
                 await rep.report(f"Upload failed after {self.max_retries} retries: {format_exc()}", "error")
