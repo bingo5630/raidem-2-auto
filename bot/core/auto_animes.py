@@ -164,7 +164,7 @@ async def get_animes(name, torrent, force=False):
             await safe_telegram_call(
                 bot.send_sticker,
                 channel_id,
-                "CAACAgUAAxkBAAIdGWnG3U-IBDhpJ6fohwwniusJznreAAJCDgACgRPJV4urjemz8MAbOgQ"
+                "CAACAgUAAxkBAAIgiGoHcAzaqmeo-3X_myHxvuspEM0GAAKlFAAC74dQVUVZ6eUDEqwGOwQ"
             )
 
             await asyncio.sleep(1.5)
