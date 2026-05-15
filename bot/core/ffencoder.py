@@ -39,21 +39,12 @@ ffargs = {
     'HDRi': "-c copy"
 }
 
-# Scaling values (used only when no watermark is applied)
-scale_values = {
-    '1080': "scale=1920:1080",
-    '720': "scale=1280:720",
-    '480': "scale=854:480",
-    'HDRi': None
-}
-
 if not ospath.exists("encode"):
     makedirs("encode", exist_ok=True)
 
 
 class FFEncoder:
     def __init__(self, message, path, name, qual, is_master=False, sub_path=None, poster_url=None):
-        # why: keep state
         self.__proc = None
         self.is_cancelled = False
         self.message = message
@@ -69,7 +60,6 @@ class FFEncoder:
         self.poster_url = poster_url
 
     async def progress(self):
-        # why: report progress using ffmpeg -progress output
         self.__total_time = await mediainfo(self.dl_path, get_duration=True)
         if isinstance(self.__total_time, str):
             try:
@@ -86,7 +76,6 @@ class FFEncoder:
             except FileNotFoundError:
                 text = ""
             except Exception:
-                LOGS.exception("Error reading progress file")
                 text = ""
 
             if text:
@@ -119,7 +108,7 @@ class FFEncoder:
                 try:
                     await editMessage(self.message, progress_str)
                 except Exception:
-                    LOGS.exception("Failed to update progress message")
+                    pass
 
                 prog = findall(r"progress=(\w+)", text)
                 if prog and prog[-1] == 'end':
@@ -133,45 +122,74 @@ class FFEncoder:
                 return None
 
             parsed = urlparse(url)
-            filename = unquote(pathlib.Path(parsed.path).name) or "watermark"
+            filename = unquote(pathlib.Path(parsed.path).name) or "watermark_raw"
             filename = filename.replace("/", "_").replace("\\", "_")
             local_path = ospath.join("encode", filename)
+            valid_wm_path = ospath.join("encode", "valid_watermark.png")
 
-            if ospath.exists(local_path):
-                LOGS.info(f"Using cached watermark: {local_path}")
-                return local_path
+            # 🚀 SMART DOWNLOADER: Web Link ya Telegram File ID
+            if url.startswith("http://") or url.startswith("https://"):
+                timeout = aiohttp.ClientTimeout(total=30)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.get(url) as resp:
+                        if resp.status != 200:
+                            LOGS.warning(f"Failed to download watermark {url} status {resp.status}")
+                            return None
+                        async with aiopen(local_path, 'wb') as f:
+                            async for chunk in resp.content.iter_chunked(1024 * 32):
+                                if not chunk:
+                                    break
+                                await f.write(chunk)
+            else:
+                from bot import bot
+                await bot.download_media(url, file_name=local_path)
 
-            timeout = aiohttp.ClientTimeout(total=30)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(url) as resp:
-                    if resp.status != 200:
-                        LOGS.warning(f"Failed to download watermark {url} status {resp.status}")
-                        return None
-                    async with aiopen(local_path, 'wb') as f:
-                        async for chunk in resp.content.iter_chunked(1024 * 32):
-                            if not chunk:
-                                break
-                            await f.write(chunk)
-            LOGS.info(f"Watermark downloaded to: {local_path}")
-            return local_path
+            # 🔥 VERIFY IMAGE & REMOVE SOLID BACKGROUND (White/Black)
+            if ospath.exists(local_path) and ospath.getsize(local_path) > 0:
+                from PIL import Image
+                try:
+                    img = Image.open(local_path).convert("RGBA")
+                    data = img.getdata()
+
+                    newData = []
+                    # Threshold for what is considered "Pure White" or "Pure Black"
+                    # Backgrounds are rarely mathematically perfect #000000 or #FFFFFF due to compression.
+                    for item in data:
+                        # item is (R, G, B, A)
+                        # Check for White (Values close to 255)
+                        if item[0] > 240 and item[1] > 240 and item[2] > 240:
+                            newData.append((255, 255, 255, 0)) # Transparent
+                        # Check for Black (Values close to 0)
+                        elif item[0] < 15 and item[1] < 15 and item[2] < 15:
+                            newData.append((0, 0, 0, 0)) # Transparent
+                        else:
+                            newData.append(item) # Keep original pixel
+
+                    img.putdata(newData)
+                    img.save(valid_wm_path, format="PNG")
+                    await aioremove(local_path)
+                    return valid_wm_path
+                except Exception as e:
+                    LOGS.error(f"Invalid watermark image downloaded: {e}")
+                    await aioremove(local_path)
+                    return None
+            return None
         except Exception:
             LOGS.exception("Error downloading watermark")
             return None
 
     async def start_encode(self):
-        # prepare progress file
         try:
             if ospath.exists(self.__prog_file):
                 await aioremove(self.__prog_file)
             async with aiopen(self.__prog_file, 'w') as _:
-                LOGS.info("Progress Temp Generated!")
+                pass
         except Exception:
-            LOGS.exception("Could not create progress file")
+            pass
 
         dl_npath = ospath.join("encode", "ffanimeadvin.mkv")
-        out_npath = ospath.join("encode", "ffanimeadvout.mp4") # CHANGED TO MP4 CONTAINER TO PREVENT TRANSPARENT BOXES
+        out_npath = ospath.join("encode", "ffanimeadvout.mp4") 
 
-        # handle directory input
         if ospath.isdir(self.dl_path):
             files = glob.glob(ospath.join(self.dl_path, "*.mkv")) + glob.glob(ospath.join(self.dl_path, "*.mp4"))
             if not files:
@@ -180,45 +198,39 @@ class FFEncoder:
         else:
             video_file = self.dl_path
 
-        # move original to temp path for safe processing
         try:
             if not self.is_master:
-                # Compression steps shouldn't consume the master file
                 import shutil
                 shutil.copy2(video_file, dl_npath)
             else:
                 await aiorename(video_file, dl_npath)
         except Exception:
-            # if rename failed (maybe same path), try copy fallback via shell
             try:
                 import shutil
                 shutil.copy2(video_file, dl_npath)
             except Exception:
-                LOGS.exception("Failed to move/copy input file")
                 raise
 
         watermark = None
         try:
             wm = await db.get_watermark()
-            if wm and (wm.startswith("http://") or wm.startswith("https://")):
+            if wm:
                 local_wm = await self.download_watermark(wm)
                 watermark = local_wm if local_wm else None
-            # Also check for a local fallback watermark set via commands
-            local_fallback = ospath.join("bot", "utils", "watermark.png")
-            if not watermark and ospath.exists(local_fallback):
-                watermark = local_fallback
+            
+            # Fallback local watermark
+            if not watermark:
+                local_fallback = ospath.join("bot", "utils", "watermark.png")
+                if ospath.exists(local_fallback):
+                    watermark = local_fallback
         except Exception:
-            LOGS.exception("Error fetching/downloading watermark. Proceeding without it.")
             watermark = None
 
-        # Build base ffmpeg command
         ffcode = f"ffmpeg -hide_banner -loglevel error -progress '{self.__prog_file}' -y -i '{dl_npath}'"
 
         if self.is_master:
-            # For the master (1080p), apply both watermark and translated subtitles.
             subtitle_filter = ""
             if self.sub_path and ospath.exists(self.sub_path):
-                # Use AHS BestFont styling
                 fontsdir = ospath.abspath(ospath.join("bot", "utils"))
                 import time as t
                 temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
@@ -229,29 +241,23 @@ class FFEncoder:
 
             if watermark and ospath.exists(watermark):
                 ffcode += f" -i '{watermark}'"
-
-                # 1. Scale watermark to 150px width
-                # 2. Overlay at x=20, y=20
-                wm_scale = "[1:v]scale=150:-1[wm];"
-                overlay = "[0:v][wm]overlay=20:20[ovr]"
-                filter_str = wm_scale + overlay
-
+                
+                # 🔥 FIXED FFmpeg FILTER CHAIN
                 if subtitle_filter:
-                    filter_str += f";[ovr]{subtitle_filter}[out_v]"
+                    # Apply watermark first, then subtitles on top
+                    filter_str = f"[1:v]scale=150:-1[wm];[0:v][wm]overlay=20:20[ovr];[ovr]{subtitle_filter}[out_v]"
                 else:
-                    filter_str += ";[ovr]copy[out_v]"
-
-                # ONLY Map Video and Audio. Drop everything else (-sn -map_metadata -1)
+                    filter_str = f"[1:v]scale=150:-1[wm];[0:v][wm]overlay=20:20[out_v]"
+                
                 ffcode += f" -filter_complex \"{filter_str}\" -map \"[out_v]\" -map 0:a -sn -map_metadata -1"
-                ffcode += f" {ffargs[self.__qual]} "
             else:
                 if subtitle_filter:
                     ffcode += f" -vf \"{subtitle_filter}\" -map 0:v -map 0:a -sn -map_metadata -1"
                 else:
                     ffcode += " -map 0:v -map 0:a -sn -map_metadata -1"
-                ffcode += f" {ffargs[self.__qual]} "
+            
+            ffcode += f" {ffargs[self.__qual]} "
         else:
-            # For compressed versions (720p, 480p), the input is the already-encoded master.
             target_height = "720" if self.__qual == "720" else "480" if self.__qual == "480" else None
             if target_height:
                 ffcode += f" -vf 'scale=-2:{target_height}:flags=fast_bilinear' -map 0:v -map 0:a -sn -map_metadata -1"
@@ -260,7 +266,6 @@ class FFEncoder:
                 ffcode += " -map 0:v -map 0:a -sn -map_metadata -1"
                 ffcode += f" {ffargs[self.__qual]} "
 
-        # global metadata
         ffcode += (
             " -metadata title='By HellFire_Academy' "
             "-metadata author='By HellFire_Academy' "
@@ -272,70 +277,52 @@ class FFEncoder:
 
         LOGS.info(f'FFCode: {ffcode}')
 
-        # start process
         try:
-            # Avoid using PIPE without consuming it, to prevent async buffer deadlocks hanging ffmpeg
             self.__proc = await create_subprocess_shell(ffcode)
         except Exception:
-            LOGS.exception("Failed to start ffmpeg")
-            # restore original file to its original name if possible
             try:
                 await aiorename(dl_npath, self.dl_path)
             except Exception:
-                LOGS.exception("Failed to restore input file after ffmpeg start failure")
+                pass
             raise
 
         proc_pid = self.__proc.pid
         try:
             ffpids_cache.append(proc_pid)
         except Exception:
-            LOGS.exception("Failed to append pid to cache")
+            pass
 
-        # run progress and wait for ffmpeg concurrently
         try:
             _, return_code = await gather(create_task(self.progress()), self.__proc.wait())
         finally:
-            # ensure pid removed if present
             try:
                 if proc_pid in ffpids_cache:
                     ffpids_cache.remove(proc_pid)
             except Exception:
-                LOGS.exception("Failed to remove pid from cache")
+                pass
 
-        # restore original input file
         try:
             if not self.is_master:
-                # We used copy2, so we can just delete the temp input file
                 await aioremove(dl_npath)
             else:
                 await aiorename(dl_npath, self.dl_path)
         except Exception:
-            LOGS.exception("Failed to restore/cleanup input file to original location")
+            pass
 
         if self.is_cancelled:
-            LOGS.info("Encoding was cancelled by user")
             return
 
         if return_code == 0 and ospath.exists(out_npath):
             try:
                 await aiorename(out_npath, self.out_path)
             except Exception:
-                LOGS.exception("Failed to move output to final path")
-                # attempt copy fallback
                 try:
                     import shutil
                     shutil.copy2(out_npath, self.out_path)
                 except Exception:
-                    LOGS.exception("Failed fallback copy of output")
                     return None
             return self.out_path
         else:
-            try:
-                stderr_output = (await self.__proc.stderr.read()).decode().strip()
-            except Exception:
-                stderr_output = "ffmpeg failed but could not read stderr"
-            await rep.report(stderr_output, "error")
-            LOGS.error(f"FFmpeg failed with code {return_code}: {stderr_output}")
             return None
 
     async def cancel_encode(self):
@@ -344,4 +331,4 @@ class FFEncoder:
             try:
                 self.__proc.kill()
             except Exception:
-                LOGS.exception("Failed to kill ffmpeg process")
+                pass
