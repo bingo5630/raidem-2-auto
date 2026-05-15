@@ -574,4 +574,4 @@ class MongoDB:
         )
 
 
-db = MongoDB(Var.MONGO_URI, "Raidem_Pro_bot")
+db = MongoDB(Var.MONGO_URI, "Raiden_Shogun_File_Bot")
