@@ -1,17 +1,17 @@
 on_pic = "https://graph.org/file/0c0de244f3e6ec807b1e1-ed1c6d566c78026fa2.jpg"
-off_pic = "https://graph.org/file/3129927f363770a7aaf20-5dbae71b3b524113a1.jpg"
+off_pic = "https://graph.org/file/35cb7e8e20d6d53a1ab42-efe99ac73e28437199.jpg"
 files_cmd_pic = "https://telegra.ph/file/d44f46054250a73053614.jpg"
 autodel_cmd_pic = "https://telegra.ph/file/a64533814021b40057ccd.jpg"
 
 PICS = [
-    "https://graph.org/file/c09deb1579ebffec055f7-0523385487fbe9e960.jpg",
-    "https://graph.org/file/3129927f363770a7aaf20-5dbae71b3b524113a1.jpg"
+    "https://graph.org/file/02fb69b923afefd9ed8eb-9239c7fb4dbc16fc89.jpg",
+    "https://graph.org/file/0c0de244f3e6ec807b1e1-ed1c6d566c78026fa2.jpg"
 ]
 
 #PICS = #"https://telegra.ph/file/f3d3aff9ec422158feb05-d2180e3665e0ac4d32.jpg #https://envs.sh/8gs.jpg".split() #Required
 
-START_PIC = "https://graph.org/file/9cb42554f7a2fe008942d-5b03c4e016adc434fc.jpg"
-FORCE_PIC = "https://graph.org/file/cc2117bdd835c0dcb6862-f00c86754bca387db4.jpg"
+START_PIC = "https://graph.org/file/3d47c9a6be2b68c9148d0-178c5f7955609c23f8.jpg"
+FORCE_PIC = "https://graph.org/file/02fb69b923afefd9ed8eb-9239c7fb4dbc16fc89.jpg"
 
 
 CUSTOM_CAPTION = "<b>» ʙʏ <a href=https://t.me/anime_mortals>Aɴɪᴍᴇ Mᴏʀᴛᴀʟs</a></b>"
@@ -56,8 +56,8 @@ HELP_TEXT = """<b>⁉️ Hᴇʟʟᴏ {mention} ~
 <b><i>◈ Sᴛɪʟʟ ʜᴀᴠᴇ ᴅᴏᴜʙᴛs, ᴄᴏɴᴛᴀᴄᴛ ʙᴇʟᴏᴡ ᴘᴇʀsᴏɴs/ɢʀᴏᴜᴘ ᴀs ᴘᴇʀ ʏᴏᴜʀ ɴᴇᴇᴅ !</i></b>"""
 
 ABOUT_TXT = """<b>›› ᴍʏ ɴᴀᴍᴇ: {botname}
-<blockquote expandable>›› ᴜᴘᴅᴀᴛᴇs ᴄʜᴀɴɴᴇʟ: <a href='https://t.me/Anime_Fury'>𝐀ɴɪᴍᴇ ʀᴀᴠᴇɴ</a>
-›› ᴅᴇᴠᴇʟᴏᴘᴇʀ: <a href='https://t.me/Urr_Sanjiii'>𝐒ᴀɴᴊɪ 𝐒aᴍᴀ</a></b></blockquote>"""
+<blockquote expandable>›› ᴜᴘᴅᴀᴛᴇs ᴄʜᴀɴɴᴇʟ: <a href='https://t.me/HellFire_Academy'>𝐀ɴɪᴍᴇ</a>
+›› ᴅᴇᴠᴇʟᴏᴘᴇʀ: <a href='https://t.me/Urr_Sanjiii'>𝐒ᴀɴᴊɪ</a></b></blockquote>"""
 
 SETTING_TXT = """<b>»  Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴs</b>
 <blockquote expandable>» ᴛᴏᴛᴀʟ ғᴏʀᴄᴇ sᴜʙ ᴄʜᴀɴɴᴇʟ:  <b>{total_fsub}</b>
@@ -67,10 +67,10 @@ SETTING_TXT = """<b>»  Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴs</b>
 » ᴄʜᴀɴɴᴇʟ ʙᴜᴛᴛᴏɴ:  <b>{chnl_butn}</b>
 » ʀᴇǫᴜᴇsᴛ ғsᴜʙ ᴍᴏᴅᴇ: <b>{reqfsub}</b></blockquote>"""
 
-CHANNELS_TXT = """<b>›› 𝐀ɴɪᴍᴇ 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ ʀᴀᴠᴇɴ</a>
-<blockquote expandable>›› 𝐎ɴɢᴏɪɴɢ 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/ongoing_anime_raven'>Oɴɢᴏɪɴɢ ʀᴀᴠᴇɴ</a>
-›› 𝐈ɴᴅᴇx 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/anime_raven_index'>Aɴɪᴍᴇ Index</a>
-›› 𝐍ᴇᴛᴡᴏʀᴋ: <a href='https://t.me/battousai_network'>ʙᴀᴛᴛᴏᴜsᴀɪ</a>
+CHANNELS_TXT = """<b>›› 𝐀ɴɪᴍᴇ 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ</a>
+<blockquote expandable>›› 𝐎ɴɢᴏɪɴɢ 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/ongoing_Hellfire_academy'>Oɴɢᴏɪɴɢ</a>
+›› 18+ 𝐂ʜᴀɴɴᴇʟ: <a href='https://t.me/adult_flux'>Adult Flux</a>
+›› 𝐍ᴇᴛᴡᴏʀᴋ: <a href='https://t.me/mugiwaras_network'>Mugiwaras</a>
 ›› Dᴇᴠᴇʟᴏᴘᴇʀ: <a href='https://t.me/Urr_Sanjiii'>𝗚𝗢𝗝𝗢</a></b></blockquote>"""
 
 on_txt, off_txt = "Eɴᴀʙʟᴇᴅ ✅", "Dɪsᴀʙʟᴇᴅ ❌"
