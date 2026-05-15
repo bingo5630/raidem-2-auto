@@ -475,7 +475,7 @@ async def start_msg(client, message):
                 Var.START_PHOTO,
                 caption=smsg,
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("• 𝐌ᴀɪɴ 𝐂ʜᴀɴɴᴇʟ •", url='https://t.me/HellFire_Academy_Official_Index')],
+                    [InlineKeyboardButton("• 𝐌ᴀɪɴ 𝐂ʜᴀɴɴᴇʟ •", url='https://t.me/HellFire_Academy_Official')],
                     [InlineKeyboardButton("• 𝐅ᴏʀ 𝐌ᴏʀᴇ •", callback_data='channel'),
                      InlineKeyboardButton("• 𝐂ʜᴀᴛ •", url='https://t.me/HellFire_Academy_Chat')],
                     [InlineKeyboardButton("• 𝐎ᴜʀ 𝐍ᴇᴛᴡᴏʀᴋ •", url='https://t.me/Mugiwaras_Network')],
