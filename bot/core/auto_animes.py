@@ -488,9 +488,10 @@ async def post_channel_info_delayed(
     header = (
         f"<blockquote><b>{title}</b></blockquote>\n"
         f"──────────────────────\n"
-        f"<b>➥ Audio: Japanese [Hindi Sub]</b>\n"
-        f"<b>➤ Quality: Multi Quality</b>\n"
+        f"<b>➥ 𝐒ᴇᴀsᴏɴ: {season_number}</b>\n"
         f"<b>➥ Episode: {str(episode).zfill(2)}</b>\n"
+        f"<b>➤ Audio: Japanese [Hindi Sub]</b>\n"
+        f"<b>➤ Quality: Multi Quality</b>\n"
         f"──────────────────────\n"
         f"<blockquote>"
     )
