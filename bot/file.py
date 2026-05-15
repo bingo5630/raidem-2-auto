@@ -155,7 +155,6 @@ def get_media_details(path):
 
 
 def send_and_delete_file(client, chat_id, file_path, thumbnail=None, caption="", user_id=None):
-    upload_method = get_upload_method(user_id)  # Retrieve user's upload method
     forwarding_channel = Var.LOG_CHANNEL  # Channel to forward the file
 
     try:        
@@ -164,33 +163,13 @@ def send_and_delete_file(client, chat_id, file_path, thumbnail=None, caption="",
         
         # Add user info to the caption
         caption_with_info = f"{caption}\n\n{user_details}"
-        if upload_method == "document":
-            # Send as document
-            sent_message = client.send_document(
-                chat_id,
-                file_path,
-                thumb=thumbnail if thumbnail else None,
-                caption=caption
-            )
-        else:
-            # Send as video
-            details = get_media_details(file_path)
-            if details:
-                width, height, duration = details  # Unpack the values properly
-                width = int(width) if width else None
-                height = int(height) if height else None
-                duration = int(float(duration)) if duration else None
-            sent_message = client.send_video(
-                chat_id,
-                file_path,
-                duration= duration if duration else None,
-                width= width if width else None,
-                height= height if height else None,
-                supports_streaming= True,
-                has_spoiler= True,
-                thumb=None,
-                caption=caption
-            )
+        # Send as document
+        sent_message = client.send_document(
+            chat_id,
+            file_path,
+            thumb=thumbnail if thumbnail else None,
+            caption=caption
+        )
         
         # Forward the message to the specified channel
         forward_message = client.copy_message(

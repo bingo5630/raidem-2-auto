@@ -275,11 +275,6 @@ async def cb_handler(client: bot, query: CallbackQuery):
             ]),
         )
 
-    elif data.startswith("setmode_"):
-        mode = data.split("_")[1]
-        await db.set_upload_mode(mode)
-        await query.answer(f"Output mode set to {mode.upper()}", show_alert=True)
-
     elif data == "start" or data == "back_start":
         await query.edit_message_media(
             InputMediaPhoto(random.choice(PICS), 
@@ -1309,31 +1304,6 @@ async def cb_handler(client: bot, query: CallbackQuery):
         reply_markup = InlineKeyboardMarkup(download_buttons)
 
         await query.message.reply_text("Select a download link:", reply_markup=reply_markup)
-
-
-    elif data.startswith("set_method_"):
-        user_id = query.from_user.id
-        upload_method = data.split("_")[2]  # 'document' or 'video'
-
-    # Update the selected method in the database
-        save_upload_method(user_id, upload_method)
-
-    # Acknowledge the change
-        await query.answer(f"Upload method set to {upload_method.capitalize()}")
-
-    # Update buttons
-        document_status = "✅" if upload_method == "document" else "❌"
-        video_status = "✅" if upload_method == "video" else "❌"
-
-        buttons = [
-            [
-                InlineKeyboardButton(f"Document ({document_status})", callback_data="set_method_document"),
-                InlineKeyboardButton(f"Video ({video_status})", callback_data="set_method_video")
-            ]
-        ]
-
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_reply_markup(reply_markup)
 
 
     elif data.startswith("dl_"):

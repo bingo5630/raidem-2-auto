@@ -80,20 +80,6 @@ class MongoDB:
         return {doc["original"]: doc["poster_url"] for doc in docs if "original" in doc}
 
 
-        
-# Utility: Save upload method
-    async def save_upload_method(self, user_id, method):
-        await self.method_data.update_one(
-            {"user_id": user_id},
-            {"$set": {"method": method}},
-            upsert=True
-        )
-
-# Utility: Get upload method
-    async def get_upload_method(self, user_id):
-        record = await self.method_data.find_one({"user_id": user_id})
-        return record["method"] if record else "document"  # Default is 'document'
-    
     async def get_thumbnail(self):
         """Fetch the stored thumbnail URL or return None if not set."""
         data = await self.thumb_data.find_one({"_id": "thumbnail"})
@@ -543,18 +529,7 @@ class MongoDB:
         )
 
     # === UPLOAD MODE MANAGEMENT ===
-    async def set_upload_mode(self, mode: str):
-        """Set global upload mode: 'video' or 'document'."""
-        await self.user_data.update_one(
-            {"_id": "global_upload_mode"},
-            {"$set": {"mode": mode}},
-            upsert=True
-        )
-
-    async def get_upload_mode(self) -> str:
-        """Get global upload mode. Defaults to 'video'."""
-        data = await self.user_data.find_one({"_id": "global_upload_mode"})
-        return data.get("mode", "video") if data else "video"
+    # Mode is hardcoded to "document" now, these methods are no longer needed.
 
     async def get_shortner_settings(self):
         data = await self.shortner_data.find_one({"_id": "shortner_settings"})
