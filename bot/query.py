@@ -858,7 +858,7 @@ async def cb_handler(client: bot, query: CallbackQuery):
                 set_msg = await bot.ask(
                     chat_id=id, 
                     text=(
-                        "📌 Please send the new watermark (URL).\n\n"
+                        "📌 Please send the new watermark (URL, Photo, or Document).\n\n"
                         "To remove the watermark, send <code>remove</code>.\n\n"
                         "⚠️ You have 30 seconds to send the watermark."
                     ),
@@ -867,9 +867,9 @@ async def cb_handler(client: bot, query: CallbackQuery):
 
             # Handle user response
                 if set_msg.photo:
-                    file_id = set_msg.photo[-1].file_id
-                    file_path = await bot.get_file(file_id)
-                    new_watermark = file_path.file_path  # Local path
+                    new_watermark = set_msg.photo.file_id
+                elif set_msg.document:
+                    new_watermark = set_msg.document.file_id
                 elif set_msg.text:
                     if set_msg.text.lower() == "remove":
                         new_watermark = False  # Disable watermark
@@ -877,7 +877,7 @@ async def cb_handler(client: bot, query: CallbackQuery):
                         new_watermark = set_msg.text  # URL
                     else:
                         return await set_msg.reply(
-                            "❌ Invalid input! Please send a valid URL.\n"
+                            "❌ Invalid input! Please send a valid URL, Photo, or Document.\n"
                             "Try again by clicking below.",
                             reply_markup=InlineKeyboardMarkup([
                                 [InlineKeyboardButton("🔄 Retry", callback_data="set_watermark")],
@@ -886,7 +886,7 @@ async def cb_handler(client: bot, query: CallbackQuery):
                         )
                 else:
                     return await set_msg.reply(
-                        "❌ Invalid input! Please send a valid URL.\n"
+                        "❌ Invalid input! Please send a valid URL, Photo, or Document.\n"
                         "Try again by clicking below.",
                         reply_markup=InlineKeyboardMarkup([
                             [InlineKeyboardButton("🔄 Retry", callback_data="set_watermark")],
