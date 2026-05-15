@@ -1,4 +1,4 @@
-on_pic = "https://graph.org/file/9cb42554f7a2fe008942d-5b03c4e016adc434fc.jpg"
+on_pic = "https://graph.org/file/0c0de244f3e6ec807b1e1-ed1c6d566c78026fa2.jpg"
 off_pic = "https://graph.org/file/3129927f363770a7aaf20-5dbae71b3b524113a1.jpg"
 files_cmd_pic = "https://telegra.ph/file/d44f46054250a73053614.jpg"
 autodel_cmd_pic = "https://telegra.ph/file/a64533814021b40057ccd.jpg"
