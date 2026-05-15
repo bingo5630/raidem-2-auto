@@ -478,7 +478,7 @@ async def start_msg(client, message):
                     [InlineKeyboardButton("• 𝐌ᴀɪɴ 𝐂ʜᴀɴɴᴇʟ •", url='https://t.me/HellFire_Academy_Official_Index')],
                     [InlineKeyboardButton("• 𝐅ᴏʀ 𝐌ᴏʀᴇ •", callback_data='channel'),
                      InlineKeyboardButton("• 𝐂ʜᴀᴛ •", url='https://t.me/HellFire_Academy_Chat')],
-                    [InlineKeyboardButton("• 𝐎ᴜʀ 𝐍𝐞𝐭𝐰𝐨𝐫𝐤 •", url='https://t.me/Mugiwaras_Network')],
+                    [InlineKeyboardButton("• 𝐎ᴜʀ 𝐍ᴇᴛᴡᴏʀᴋ •", url='https://t.me/Mugiwaras_Network')],
                 ]),
                 has_spoiler=True
             )
