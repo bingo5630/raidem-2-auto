@@ -23,14 +23,14 @@ def stylize_quote(text: str) -> str:
 
 
 CAPTION_FORMAT = """
-<blockquote><b>{title}</b></blockquote>
+<blockquote><b>» {title}</b></blockquote>
 <b>━━━━━━━━━━━━━━━━━━━</b>
 <b>➥ 𝐒ᴇᴀsᴏɴ: {season_number}
 <b>➤ 𝐄ᴘɪsᴏᴅᴇ {ep_no}</b>
 <b>➤ 𝐐ᴜᴀʟɪᴛʏ: 480ᴘ | 720ᴘ | 1080ᴘ</b>
 <b>➥ 𝐀ᴜᴅɪᴏ: {lang_info}</b>
 <b>━━━━━━━━━━━━━━━━━━━</b>
-<blockquote><b>≡ ᴘᴏᴡᴇʀᴇᴅ ʙʏ <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ</a></b></blockquote>
+<blockquote><b>» ᴘᴏᴡᴇʀᴇᴅ ʙʏ <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ</a></b></blockquote>
 """
 
 
