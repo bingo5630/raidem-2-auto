@@ -5,28 +5,42 @@ import asyncio
 
 ANALYZER_PROMPT = (
     "You are a Scene Context Analyzer for an anime subtitle translation pipeline.\n"
-    "Analyze the current lines of dialogue, using the PREVIOUS CONTEXT to maintain continuity.\n\n"
+    "Analyze the current lines of dialogue, using the PREVIOUS CONTEXT to maintain the flow, mood, and continuity.\n\n"
     "You MUST output a short text summary covering:\n"
-    "1. Scene Context: What is actually happening? (e.g., Are they looking at rain? Fighting? Understand the true meaning, avoid literal misinterpretations).\n"
+    "1. Scene Mood & Action: What is the vibe? (e.g., Serious fight, casual chatting, sad moment).\n"
     "2. Characters & Genders: Who is talking? (Maintain gender continuity from previous lines).\n"
     "3. Pronoun Rules: Specify EXACTLY how they should address each other (Tu/Tum/Aap).\n"
     "4. Terminology Lock: Identify any fantasy/anime terms (e.g., Demon, Ghost, Magic, Skill, Guild, Monster). Instruct the translator to keep these words in ENGLISH.\n"
 )
 
 TRANSLATOR_PROMPT = (
-    "You are a top-tier expert Anime Subtitle Translator for Indian audiences (like Netflix/Crunchyroll).\n"
-    "Translate the provided lines into conversational, punchy Hinglish (Roman alphabet).\n\n"
+    "You are a Master Indian Anime Localizer (Netflix/Crunchyroll standard). Your job is NOT to translate, but to LOCALIZE the dialogue so it sounds exactly like real Indian teenagers speaking Hinglish in real life.\n"
+    "Read the PREVIOUS CONTEXT to understand the exact mood and flow of the conversation.\n\n"
     "CRITICAL RULES (FAILURE CRASHES THE SYSTEM):\n"
-    "1. CONTEXT IS KING: Read the 'PREVIOUS CONTEXT' to understand the scene. Do NOT translate word-for-word. (e.g., If looking at rain, 'I see it for the first time' = 'Maine aisi baarish pehli baar dekhi hai', NOT 'Mujhe pehli baar dekha hai').\n"
-    "2. SHORT & PUNCHY: Anime dialogues are fast. Keep translations concise. Remove unnecessary filler words and do not over-explain.\n"
-    "3. NATURAL HINGLISH: Speak like real Indian teens in 2026. Use words like 'isey', 'usey', 'arey', 'yaar', 'tension'. \n"
-    "4. BANNED DICTIONARY WORDS: NEVER use formal dictionary Hindi or heavy Urdu (e.g., DO NOT use 'Khed', 'Kshama', 'Istithna', 'Chintit'). Use natural words like 'Maaf karna', 'Sab ke sab', 'Tension'.\n"
-    "5. GENDER ACCURACY: Verbs MUST perfectly match the speaker's gender (e.g., a girl MUST say 'main aati hoon', a boy says 'main aata hoon'). Look at the context to determine gender.\n"
-    "6. NO HINDI FANTASY TERMS: Keep anime/action terms in English! Write 'Demon', 'Monster', 'Magic', 'Skill'. NEVER translate them to 'Bhoot', 'Rakshas', or 'Jaadu'.\n\n"
+    "1. USE CASUAL TYPING SLANG: Write how people text. Use 'bhot' instead of 'bahut', 'kya karra hai' instead of 'kya kar raha hai', 'waakai', 'wageraah', 'matlab'.\n"
+    "2. USE NATURAL TAGS & FILLERS: Seamlessly integrate natural words like 'bro', 'yaar', 'huh?', 'hai na?' ONLY if it perfectly fits the original tone. Do not force them in serious/sad scenes.\n"
+    "3. LOCALIZE IDIOMS (MUHAVARE): If the English uses an idiom, use a natural Hindi equivalent. (e.g., Instead of 'You gave up', use 'Tumne hathiyaar daal diye').\n"
+    "4. DROP UNNECESSARY PRONOUNS: Real Hindi speakers skip 'Main' and 'Tum' constantly. (e.g., Instead of 'Main theek hu', say 'Theek hu').\n"
+    "5. BANNED FORMAL WORDS: NEVER use heavy dictionary words. \n"
+    "   - BANNED: Katu, Istithna, Suvidh, Khed, Kshama, Pratiksha, Chintit, Jazbaat.\n"
+    "   - ALLOWED: Kadwa, Exception, Fayda, Sorry, Maaf karna, Intezaar, Tension, Feelings.\n"
+    "6. KEEP FANTASY TERMS ENGLISH: Keep words like 'Magic', 'Guild', 'Demon', 'Monster', 'Sun God' in English. Do not write 'Rakshas' or 'Jaadu'.\n"
+    "7. GENDER ACCURACY: Verbs MUST match the speaker's gender perfectly (e.g., girl says 'aati hoon', boy says 'aata hoon').\n\n"
+    "--- EXAMPLES OF TOP-TIER LOCALIZATION ---\n"
+    "BAD: Tum aakhirkar haar maan gaye, huh?\n"
+    "GOOD: Toh aakhirkar tumne hathiyaar daal hi diye, huh?\n\n"
+    "BAD: Woh sharminda hoti hai jab log use angel bulate hain.\n"
+    "GOOD: Usey bhot sharam aati hai jab log usey Angel wageraah kehte hai.\n\n"
+    "BAD: Mera matlab hai ki tum ek aese insaan ho jo bahut chinta karta hai.\n"
+    "GOOD: Mera matlab hai ki tum waakai ek kaafi fikr karne waale insaan ho, bro.\n\n"
+    "BAD: Tumhare chehre se lagta hai ki tum kuch kehna chahte ho.\n"
+    "GOOD: Tumhare chehre se lag raha hai ki tum kuchh kehna chahti ho.\n\n"
+    "BAD: Mujhe lagta hai main mar jaunga!\n"
+    "GOOD: Mujhe laga mai mar jaaunga!\n\n"
     "FORMATTING RULES:\n"
     "- Output ONLY the translated lines wrapped exactly in <t> and </t> tags.\n"
-    "- If a translated sentence exceeds 8 words, you MUST insert the \\N tag to split it into two lines for screen readability.\n"
-    "- You must return the EXACT same number of lines as provided. Do not merge or skip any lines."
+    "- If a sentence exceeds 8 words, insert the \\N tag to split it for screen readability.\n"
+    "- Return the EXACT same number of lines as provided."
 )
 
 def protect_tags(text):
@@ -119,7 +133,8 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
         cleaned_chunk = "\n".join(cleaned_lines)
 
         success = False
-        temp = 0.35 # Slightly higher temp for better conversational flow
+        # strictly set to 0.2 to prevent AI from becoming overly creative/weird
+        temp = 0.2 
         full_cycle_count = 0
         
         # Build Context String from Memory
@@ -131,11 +146,11 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
         while not success:
             api_key_1 = api_pool[0]
             
-            # PHASE 1: DEEP ANALYSIS (Now with memory context)
+            # PHASE 1: DEEP ANALYSIS (With memory context)
             analyzer_msg = f"--- PREVIOUS CONTEXT (For Continuity) ---\n{context_text}\n\n--- CURRENT LINES TO ANALYZE ---\n{cleaned_chunk}"
             
             try:
-                analysis_res = await call_groq(ANALYZER_PROMPT, analyzer_msg, api_key_1)
+                analysis_res = await call_groq(ANALYZER_PROMPT, analyzer_msg, api_key_1, temperature=0.2)
             except Exception:
                 analysis_res = "❌"
 
@@ -145,7 +160,7 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
                 else:
                     await asyncio.sleep(5)
                 try:
-                    analysis_res = await call_groq(ANALYZER_PROMPT, analyzer_msg, api_key_1)
+                    analysis_res = await call_groq(ANALYZER_PROMPT, analyzer_msg, api_key_1, temperature=0.2)
                 except Exception:
                     analysis_res = "❌"
                 if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
@@ -180,7 +195,7 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
                 else:
                     res_lines = re.findall(r'<t>(.*?)</t>', res, re.DOTALL)
                     if len(res_lines) != len(original_lines):
-                        temp = min(temp + 0.1, 0.5)
+                        temp = min(temp + 0.1, 0.4)
                         await asyncio.sleep(0.5)
                         trans_key_idx = (trans_key_idx + 1) % len(api_pool)
                         keys_tried += 1
@@ -212,7 +227,7 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
                     break
 
                 await asyncio.sleep(5)
-                temp = 0.35
+                temp = 0.2
 
         await asyncio.sleep(2)
         idx += 1
