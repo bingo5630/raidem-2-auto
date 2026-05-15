@@ -8,7 +8,7 @@ from bot.core.reporter import rep
 TD_SCHR = None  # Global reference to schedule message
 
 # Your provided schedule image link
-SCHEDULE_IMAGE = "https://graph.org/file/5d27aa8a430257daf85cc-c404fb1b0b4689982e.jpg"
+SCHEDULE_IMAGE = "https://graph.org/file/c3c3a03af77d82a694ddc-ced29faba329e33174.jpg"
 
 def to_12hr(time_str: str):
     """
