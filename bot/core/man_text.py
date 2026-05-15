@@ -14,7 +14,7 @@ CAPTION_FORMAT = """
 <b><i><blockquote>➥ {anime_title} </blockquote></i></b>
 
 <b>   ➢ Episode: {ep_no}</b>
-<b>   ➢ Quality: 480p | 720p | 1080p | HDRip</b>  
+<b>   ➢ Quality: 480p | 720p | 1080p</b>  
 <b>   ➥ Audio : {lang} </b> 
 """
 
