@@ -32,6 +32,7 @@ large_client = Client(
 
 
 class TgUploader:
+    # poster_url rakha hai taaki pichli files se data aane par bot crash na ho
     def __init__(self, message: Message, poster_url: str = None):
         self.cancelled = False
         self.message = message
@@ -42,50 +43,9 @@ class TgUploader:
         self.__updater = time()
         self.retry_count = 0
         self.max_retries = 3
-        self.poster_url = poster_url
-
-    async def download_thumbnail(self, url: str):
-        """Download thumbnail (URL or Telegram File ID), compress proportionally, and return local path."""
-        temp_path = "raw_thumb.jpg"
-        compressed_path = "compressed_thumb.jpg"
-
-        # Avoid re-downloading if compressed thumb already exists from a previous upload
-        if os.path.exists(compressed_path):
-            return compressed_path
-
-        try:
-            # 🚀 SMART DOWNLOADER: Web Link ya Telegram File ID handle karega
-            if url.startswith("http://") or url.startswith("https://"):
-                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
-                    async with session.get(url) as resp:
-                        if resp.status == 200:
-                            async with aiofiles.open(temp_path, "wb") as f:
-                                await f.write(await resp.read())
-            else:
-                # Telegram File ID direct download
-                await self.__client.download_media(url, file_name=temp_path)
-
-            if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                from PIL import Image
-                # Image ko open karke pure RGB color mein convert karo
-                img = Image.open(temp_path).convert("RGB")
-                
-                # 🔥 ORIGINAL SHAPE BARKARAR RAKHO (No Black Box)
-                # Ye lambai ya chaudai ko max 320 par set karega, par shape nahi bigadega (e.g., 320x180)
-                img.thumbnail((320, 320))
-                
-                # Bina fालतू metadata ke save karo
-                img.save(compressed_path, format="JPEG", quality=90, optimize=True)
-
-                os.remove(temp_path)
-                return compressed_path
-                
-        except Exception as e:
-            await rep.report(f"[download_thumbnail] Error: {e}", "warning", log=False)
-        return None
 
     async def upload(self, path: str, qual: str, delete_after: bool = True):
-        """Main upload function with dual-session handling for 2GB+ files."""
+        """Main upload function (Permanently forced to Document Mode)."""
         if not os.path.exists(path):
             await rep.report(f"File not found: {path}", "error")
             return None
@@ -98,7 +58,6 @@ class TgUploader:
         use_alt_client = file_size > 2 * 1024 * 1024 * 1024  # >2GB
         self.__client = large_client if use_alt_client else bot
 
-        # Ensure large client is started and connected for 2GB+ files
         if use_alt_client:
             try:
                 if not large_client.is_initialized:
@@ -109,62 +68,26 @@ class TgUploader:
                 return None
 
         try:
-            upload_mode = await db.get_upload_mode()
+            # 🔥 FORCED DOCUMENT MODE 🔥
+            upload_mode = "document" 
             await rep.report(f"Starting upload ({upload_mode}): {self.__name} ({convertBytes(file_size)})", "info", log=False)
             
-            if upload_mode == "document":
-                # For document mode: strictly use `/sthumb` document thumbnail
-                thumb_path = os.path.join("bot", "utils", "thumb.jpg")
-                if os.path.exists(thumb_path) and os.path.getsize(thumb_path) > 0:
-                    thumbnail = thumb_path
-                else:
-                    thumbnail = None
-
-                sent = await self.__client.send_document(
-                    chat_id=Var.FILE_STORE,
-                    document=path,
-                    thumb=thumbnail,  
-                    caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name.replace('[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] ', '')}",
-                    force_document=True,
-                    progress=self.progress_status
-                )
+            # Sirf `/sthumb` (thumb.jpg) document thumbnail use karega
+            thumb_path = os.path.join("bot", "utils", "thumb.jpg")
+            if os.path.exists(thumb_path) and os.path.getsize(thumb_path) > 0:
+                thumbnail = thumb_path
             else:
-                # For video mode: use poster URL/File ID or fallback
                 thumbnail = None
-                if self.poster_url:
-                    thumbnail = await self.download_thumbnail(self.poster_url)
 
-                # 🔥 THE FALLBACK FIX: Agar poster fetch fail hua, toh default thumbnail use karo
-                if not thumbnail:
-                    fallback_thumb = os.path.join("bot", "utils", "thumb.jpg")
-                    if os.path.exists(fallback_thumb) and os.path.getsize(fallback_thumb) > 0:
-                        from PIL import Image
-                        try:
-                            img = Image.open(fallback_thumb).convert("RGB")
-                            img.thumbnail((320, 320))
-                            comp_fallback = "compressed_fallback.jpg"
-                            img.save(comp_fallback, format="JPEG", quality=80)
-                            thumbnail = comp_fallback
-                        except Exception:
-                            thumbnail = fallback_thumb
-
-                if thumbnail and not os.path.exists(thumbnail):
-                    thumbnail = None
-
-                # Map dimensions based on quality
-                dimensions = {"1080": (1920, 1080), "720": (1280, 720), "480": (854, 480)}
-                w, h = dimensions.get(str(self.__qual), (1280, 720))
-
-                sent = await self.__client.send_video(
-                    chat_id=Var.FILE_STORE,
-                    video=path,
-                    thumb=thumbnail,  
-                    width=w,       
-                    height=h,      
-                    caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name.replace('[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] ', '')}",
-                    progress=self.progress_status,
-                    supports_streaming=True
-                )
+            sent = await self.__client.send_document(
+                chat_id=Var.FILE_STORE,
+                document=path,
+                thumb=thumbnail,  
+                caption=f"<b><a href='https://t.me/HellFire_Academy_Official'>[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ]</a></b> {self.__name.replace('[𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ] ', '')}",
+                force_document=True,
+                progress=self.progress_status
+            )
+            
             self.retry_count = 0
             return sent
 
@@ -190,13 +113,6 @@ class TgUploader:
                     await aioremove(path)
                 except Exception:
                     pass
-
-            if delete_after:
-                if thumbnail in ["temp_thumb.jpg", "compressed_thumb.jpg", "compressed_fallback.jpg"] and os.path.exists(thumbnail):
-                    try:
-                        os.remove(thumbnail)
-                    except Exception:
-                        pass
 
     async def progress_status(self, current, total):
         """Progress bar updater for upload."""
