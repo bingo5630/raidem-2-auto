@@ -5,27 +5,24 @@ import asyncio
 
 ANALYZER_PROMPT = (
     "You are a Scene Context Analyzer for an anime subtitle translation pipeline.\n"
-    "Analyze the following 10 lines of dialogue and output a highly accurate Scene Context Brief.\n\n"
-    "You MUST output a short text summary covering these 4 exact points:\n"
-    "1. Characters & Genders: Who is talking? (e.g., Male talking to Female, or Two Males).\n"
-    "2. Relationship & Dynamics: (e.g., Close Friends, Mother & Son, Enemies, Boss & Subordinate, Strangers).\n"
-    "3. Pronoun Rules: Specify EXACTLY how they should address each other in Hindi.\n"
-    "   - Use 'Tu' for close friends, siblings, or bitter enemies.\n"
-    "   - Use 'Tum' for casual acquaintances, first-time meetings, or regular conversations.\n"
-    "   - Use 'Aap' strictly for elders, parents, or high-respect figures.\n"
+    "Analyze the current lines of dialogue, using the PREVIOUS CONTEXT to maintain continuity.\n\n"
+    "You MUST output a short text summary covering:\n"
+    "1. Scene Context: What is actually happening? (e.g., Are they looking at rain? Fighting? Understand the true meaning, avoid literal misinterpretations).\n"
+    "2. Characters & Genders: Who is talking? (Maintain gender continuity from previous lines).\n"
+    "3. Pronoun Rules: Specify EXACTLY how they should address each other (Tu/Tum/Aap).\n"
     "4. Terminology Lock: Identify any fantasy/anime terms (e.g., Demon, Ghost, Magic, Skill, Guild, Monster). Instruct the translator to keep these words in ENGLISH.\n"
 )
 
 TRANSLATOR_PROMPT = (
-    "You are a top-tier Indian Anime Fansub Translator. Translate the provided lines into conversational Hinglish (Roman alphabet).\n"
-    "Use the 'Scene Analysis' provided below to perfectly adapt the tone, gender, and relationship.\n\n"
+    "You are a top-tier expert Anime Subtitle Translator for Indian audiences (like Netflix/Crunchyroll).\n"
+    "Translate the provided lines into conversational, punchy Hinglish (Roman alphabet).\n\n"
     "CRITICAL RULES (FAILURE CRASHES THE SYSTEM):\n"
-    "1. PRONOUNS & RESPECT: Strictly follow the Tu/Tum/Aap rule dictated by the Analysis. Do not mix them.\n"
-    "2. NATURAL HINGLISH: Speak like real Indian teenagers in 2026. Use words like 'isey', 'usey', 'arey', 'yaar' (only if close friends). \n"
-    "3. NO ROBOTIC REPETITION: Do not start every sentence with 'Mujhe', 'Main', or 'Toh'. Make the conversation flow naturally.\n"
-    "4. BANNED DICTIONARY WORDS: NEVER use formal dictionary Hindi (e.g., DO NOT use 'Khed', 'Kshama', 'Pratiksha', 'Chintit', 'Dhanyavad'). Use 'Afsos/Sorry', 'Maaf karna', 'Intezaar', 'Tension', 'Thanks/Shukriya'.\n"
-    "5. NO HINDI FANTASY TERMS: Keep anime/action terms in English! Write 'Demon', 'Ghost', 'Monster', 'Magic', 'Skill'. NEVER translate them to 'Bhoot', 'Rakshas', 'Pishach', or 'Jaadu'.\n"
-    "6. GENDERED VERBS: Ensure Hindi verbs perfectly match the speaker's gender (e.g., female says 'main aati hoon', male says 'main aata hoon').\n\n"
+    "1. CONTEXT IS KING: Read the 'PREVIOUS CONTEXT' to understand the scene. Do NOT translate word-for-word. (e.g., If looking at rain, 'I see it for the first time' = 'Maine aisi baarish pehli baar dekhi hai', NOT 'Mujhe pehli baar dekha hai').\n"
+    "2. SHORT & PUNCHY: Anime dialogues are fast. Keep translations concise. Remove unnecessary filler words and do not over-explain.\n"
+    "3. NATURAL HINGLISH: Speak like real Indian teens in 2026. Use words like 'isey', 'usey', 'arey', 'yaar', 'tension'. \n"
+    "4. BANNED DICTIONARY WORDS: NEVER use formal dictionary Hindi or heavy Urdu (e.g., DO NOT use 'Khed', 'Kshama', 'Istithna', 'Chintit'). Use natural words like 'Maaf karna', 'Sab ke sab', 'Tension'.\n"
+    "5. GENDER ACCURACY: Verbs MUST perfectly match the speaker's gender (e.g., a girl MUST say 'main aati hoon', a boy says 'main aata hoon'). Look at the context to determine gender.\n"
+    "6. NO HINDI FANTASY TERMS: Keep anime/action terms in English! Write 'Demon', 'Monster', 'Magic', 'Skill'. NEVER translate them to 'Bhoot', 'Rakshas', or 'Jaadu'.\n\n"
     "FORMATTING RULES:\n"
     "- Output ONLY the translated lines wrapped exactly in <t> and </t> tags.\n"
     "- If a translated sentence exceeds 8 words, you MUST insert the \\N tag to split it into two lines for screen readability.\n"
@@ -110,6 +107,9 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
     translated_texts = []
     idx = 0
     trans_key_idx = min(1, len(api_pool) - 1)
+    
+    # SLIDING WINDOW MEMORY: To keep track of the last 5 translated lines
+    previous_context_lines = []
 
     while idx < len(chunk_queue):
         original_lines = to_translate[idx*10 : (idx+1)*10]
@@ -119,11 +119,11 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
         cleaned_chunk = "\n".join(cleaned_lines)
 
         success = False
-        temp = 0.3 # Slightly higher temperature for more natural conversational flow
+        temp = 0.35 # Slightly higher temp for better conversational flow
         full_cycle_count = 0
         
-        # RESET ANALYSIS FOR EVERY NEW CHUNK
-        current_chunk_analysis = None 
+        # Build Context String from Memory
+        context_text = "\n".join(previous_context_lines) if previous_context_lines else "None (Start of Scene)"
 
         if update_callback:
             await update_callback(f"<blockquote>‣ <b>Status :</b> <b>Analysing Scene {idx+1}/{len(chunk_queue)}...</b></blockquote>")
@@ -131,27 +131,28 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
         while not success:
             api_key_1 = api_pool[0]
             
-            # PHASE 1: DEEP ANALYSIS OF THE CURRENT 10 LINES
-            if current_chunk_analysis is None:
+            # PHASE 1: DEEP ANALYSIS (Now with memory context)
+            analyzer_msg = f"--- PREVIOUS CONTEXT (For Continuity) ---\n{context_text}\n\n--- CURRENT LINES TO ANALYZE ---\n{cleaned_chunk}"
+            
+            try:
+                analysis_res = await call_groq(ANALYZER_PROMPT, analyzer_msg, api_key_1)
+            except Exception:
+                analysis_res = "❌"
+
+            if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
+                if "429" in analysis_res:
+                    await asyncio.sleep(15)
+                else:
+                    await asyncio.sleep(5)
                 try:
-                    analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
+                    analysis_res = await call_groq(ANALYZER_PROMPT, analyzer_msg, api_key_1)
                 except Exception:
                     analysis_res = "❌"
-
                 if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
-                    if "429" in analysis_res:
-                        await asyncio.sleep(15)
-                    else:
-                        await asyncio.sleep(5)
-                    try:
-                        analysis_res = await call_groq(ANALYZER_PROMPT, cleaned_chunk, api_key_1)
-                    except Exception:
-                        analysis_res = "❌"
-                    if analysis_res in ["RETRY_REQUIRED", "429", "503"] or analysis_res.startswith("❌"):
-                        analysis_res = "Context: Unknown. Use 'Tum' for general conversation. Keep terms like Demon/Ghost in English."
+                    analysis_res = "Context: Unknown. Maintain casual tone. Check previous lines for gender."
 
-                current_chunk_analysis = analysis_res
-                await asyncio.sleep(2) # Small delay to respect rate limits between Analyze and Translate
+            current_chunk_analysis = analysis_res
+            await asyncio.sleep(2) 
 
             if update_callback:
                 await update_callback(f"<blockquote>‣ <b>Status :</b> <b>Translating</b> chunk {idx+1}/{len(chunk_queue)}...</blockquote>")
@@ -161,8 +162,9 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
                 api_key_trans = api_pool[trans_key_idx]
                 try:
                     user_msg = (
+                        f"--- PREVIOUS CONTEXT (Do NOT translate this, use for continuity only) ---\n{context_text}\n\n"
                         f"--- SCENE ANALYSIS ---\n{current_chunk_analysis}\n\n"
-                        f"--- LINES TO TRANSLATE ---\n{xml_chunk}"
+                        f"--- CURRENT LINES TO TRANSLATE ---\n{xml_chunk}"
                     )
                     res = await call_groq(TRANSLATOR_PROMPT, user_msg, api_key_trans, temperature=temp)
                 except Exception:
@@ -184,9 +186,14 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
                         keys_tried += 1
                         continue
 
+                    chunk_translated = []
                     for trans_line in res_lines:
                         clean_line = re.sub(r'^\[.*?\]:\s*', '', trans_line.strip()).strip()
                         translated_texts.append(clean_line)
+                        chunk_translated.append(clean_line)
+                    
+                    # Update Memory Window: Save last 5 lines of this chunk for the next chunk
+                    previous_context_lines = chunk_translated[-5:]
 
                     trans_key_idx = (trans_key_idx + 1) % len(api_pool)
                     success = True
@@ -194,15 +201,18 @@ async def translate_subtitle_chunks(chunk_queue, to_translate, api_pool, update_
 
             if not success:
                 full_cycle_count += 1
-                if full_cycle_count >= 5: # Reduced fail loop so it doesn't get stuck forever
+                if full_cycle_count >= 5: 
                     print(f"⚠️ Chunk {idx+1} failed. Falling back to original lines.")
                     for orig in original_lines:
                         translated_texts.append(orig)
+                    
+                    # Reset memory if we hit a failure to prevent polluting context
+                    previous_context_lines = [] 
                     success = True
                     break
 
                 await asyncio.sleep(5)
-                temp = 0.3
+                temp = 0.35
 
         await asyncio.sleep(2)
         idx += 1
