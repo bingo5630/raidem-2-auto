@@ -1530,57 +1530,21 @@ async def set_watermark_handler(client: Client, message: Message):
             "⚠️ Reply with an **image** (photo/document) or a valid **image URL** to set watermark."
         )
 
-    # Helper function to save locally
-    def save_local_watermark(source_path):
-        dest_path = os.path.join("bot", "utils", "watermark.png")
-        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-        import shutil
-        shutil.copy2(source_path, dest_path)
-
     # --- Case 1: Image sent as document ---
     if reply.document and reply.document.mime_type and reply.document.mime_type.startswith("image/"):
-        tmp_path = await client.download_media(reply.document)
-        save_local_watermark(tmp_path)
         await db.set_watermark(reply.document.file_id)
-        os.remove(tmp_path)
-        return await message.reply("✅ Watermark saved successfully to local file.")
+        return await message.reply("✅ Watermark file_id saved successfully.")
 
     # --- Case 2: Image sent as photo (compressed) ---
     elif reply.photo:
-        tmp_path = f"/tmp/watermark_{user_id}.jpg"
-        await client.download_media(reply.photo.file_id, file_name=tmp_path)
-        save_local_watermark(tmp_path)
-
-        sent = await message.reply_document(tmp_path, caption="Watermark Uploaded ✅")
-        file_id = sent.document.file_id
-
-        await db.set_watermark(file_id)
-        os.remove(tmp_path)
-        return await message.reply("✅ Watermark saved successfully to local file.")
+        await db.set_watermark(reply.photo.file_id)
+        return await message.reply("✅ Watermark file_id saved successfully.")
 
     # --- Case 3: Image URL ---
     elif reply.text and reply.text.lower().startswith(("http://", "https://")):
         url = reply.text.strip()
-        ext = os.path.splitext(url.split("?")[0])[1] or ".jpg"
-        tmp_path = f"/tmp/url_watermark_{user_id}{ext}"
-
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    if resp.status != 200:
-                        return await message.reply("❌ Failed to download image from URL.")
-                    with open(tmp_path, "wb") as f:
-                        f.write(await resp.read())
-
-            sent = await message.reply_document(tmp_path, caption="Watermark Uploaded ✅")
-            file_id = sent.document.file_id
-
-            await db.set_watermark(file_id)
-            os.remove(tmp_path)
-            return await message.reply("✅ Watermark saved successfully.")
-
-        except Exception as e:
-            return await message.reply(f"❌ Error downloading image:\n<code>{e}</code>")
+        await db.set_watermark(url)
+        return await message.reply("✅ Watermark URL saved successfully.")
 
     # --- No valid input ---
     return await message.reply(
