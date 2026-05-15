@@ -45,7 +45,7 @@ class TgUploader:
         self.poster_url = poster_url
 
     async def download_thumbnail(self, url: str):
-        """Download thumbnail if it's a URL or Telegram File ID, compress it, and return local path."""
+        """Download thumbnail (URL or Telegram File ID), compress proportionally, and return local path."""
         temp_path = "raw_thumb.jpg"
         compressed_path = "compressed_thumb.jpg"
 
@@ -54,7 +54,7 @@ class TgUploader:
             return compressed_path
 
         try:
-            # 🚀 SMART DOWNLOADER: Checks if it's a web link or a Telegram File ID
+            # 🚀 SMART DOWNLOADER: Web Link ya Telegram File ID handle karega
             if url.startswith("http://") or url.startswith("https://"):
                 async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
                     async with session.get(url) as resp:
@@ -62,21 +62,24 @@ class TgUploader:
                             async with aiofiles.open(temp_path, "wb") as f:
                                 await f.write(await resp.read())
             else:
-                # It's a Telegram File ID, download directly using Pyrogram
+                # Telegram File ID direct download
                 await self.__client.download_media(url, file_name=temp_path)
 
-            # Compress for Telegram using PIL
             if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
                 from PIL import Image
-                img = Image.open(temp_path)
-                img = img.convert("RGB")
-                img.thumbnail((320, 320)) # Force Telegram's expected dimensions
-                img.save(compressed_path, format="JPEG", quality=80) # Force size under 200KB
+                # Image ko open karke pure RGB color mein convert karo
+                img = Image.open(temp_path).convert("RGB")
+                
+                # 🔥 ORIGINAL SHAPE BARKARAR RAKHO (No Black Box)
+                # Ye lambai ya chaudai ko max 320 par set karega, par shape nahi bigadega (e.g., 320x180)
+                img.thumbnail((320, 320))
+                
+                # Bina fालतू metadata ke save karo
+                img.save(compressed_path, format="JPEG", quality=90, optimize=True)
 
-                # Clean up the raw file
                 os.remove(temp_path)
-
                 return compressed_path
+                
         except Exception as e:
             await rep.report(f"[download_thumbnail] Error: {e}", "warning", log=False)
         return None
