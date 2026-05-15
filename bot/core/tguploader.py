@@ -150,7 +150,7 @@ class TgUploader:
 ‣ <b>Encoded File(s):</b> <code>{Var.QUALS.index(self.__qual) if self.__qual in Var.QUALS else 0} / {len(Var.QUALS)}</code>
 ‣ <b>System Load :</b> <code>{sys_status}</code></blockquote>
 
-<b>Powered By</b> <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ</a>
+<b>» Powered By</b> <a href='https://t.me/HellFire_Academy_Official'>𝐀ɴɪᴍᴇ 𝐇ᴇʟʟғɪʀᴇ</a>
 """
                 await editMessage(self.message, progress_str)
             except Exception:
