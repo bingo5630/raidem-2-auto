@@ -152,18 +152,13 @@ class FFEncoder:
                     data = img.getdata()
 
                     newData = []
-                    # Threshold for what is considered "Pure White" or "Pure Black"
-                    # Backgrounds are rarely mathematically perfect #000000 or #FFFFFF due to compression.
                     for item in data:
-                        # item is (R, G, B, A)
-                        # Check for White (Values close to 255)
                         if item[0] > 240 and item[1] > 240 and item[2] > 240:
                             newData.append((255, 255, 255, 0)) # Transparent
-                        # Check for Black (Values close to 0)
                         elif item[0] < 15 and item[1] < 15 and item[2] < 15:
                             newData.append((0, 0, 0, 0)) # Transparent
                         else:
-                            newData.append(item) # Keep original pixel
+                            newData.append(item)
 
                     img.putdata(newData)
                     img.save(valid_wm_path, format="PNG")
@@ -218,7 +213,6 @@ class FFEncoder:
                 local_wm = await self.download_watermark(wm)
                 watermark = local_wm if local_wm else None
             
-            # Fallback local watermark
             if not watermark:
                 local_fallback = ospath.join("bot", "utils", "watermark.png")
                 if ospath.exists(local_fallback):
@@ -233,18 +227,33 @@ class FFEncoder:
             if self.sub_path and ospath.exists(self.sub_path):
                 fontsdir = ospath.abspath(ospath.join("bot", "utils"))
                 import time as t
+                import re
+                
                 temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
-                import shutil
-                shutil.copy2(self.sub_path, temp_sub_path)
-                force_style = "FontName=AHS BestFont,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,BackColour=&H80000000,Bold=0,Italic=0,Outline=2,Shadow=1,BorderStyle=1,MarginV=30,Alignment=2,WrapStyle=1"
+                
+                # 🔥 FOOLPROOF RESOLUTION OVERRIDE LOGIC
+                # Ye original subtitle file ki script info ko force karke 1080p scale par fix kar dega.
+                with open(self.sub_path, 'r', encoding='utf-8-sig', errors='ignore') as f:
+                    ass_content = f.read()
+                
+                if 'PlayResY:' in ass_content:
+                    ass_content = re.sub(r'PlayResX:\s*\d+', 'PlayResX: 1920', ass_content)
+                    ass_content = re.sub(r'PlayResY:\s*\d+', 'PlayResY: 1080', ass_content)
+                else:
+                    ass_content = ass_content.replace('[Script Info]', '[Script Info]\nPlayResX: 1920\nPlayResY: 1080')
+                
+                with open(temp_sub_path, 'w', encoding='utf-8') as f:
+                    f.write(ass_content)
+
+                # Ab humara base resolution 1080p lock ho gaya hai, toh hum Size ko 58 pe set kar sakte hain
+                # Bold=1 se text thick hoga, MarginV=45 se text border se thoda upar readable position par aayega
+                force_style = "FontName=AHS BestFont,FontSize=58,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,BackColour=&H80000000,Bold=1,Italic=0,Outline=2,Shadow=1,BorderStyle=1,MarginV=45,Alignment=2,WrapStyle=1"
+                
                 subtitle_filter = f"subtitles='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
 
             if watermark and ospath.exists(watermark):
                 ffcode += f" -i '{watermark}'"
-                
-                # 🔥 FIXED FFmpeg FILTER CHAIN
                 if subtitle_filter:
-                    # Apply watermark first, then subtitles on top
                     filter_str = f"[1:v]scale=150:-1[wm];[0:v][wm]overlay=20:20[ovr];[ovr]{subtitle_filter}[out_v]"
                 else:
                     filter_str = f"[1:v]scale=150:-1[wm];[0:v][wm]overlay=20:20[out_v]"
