@@ -484,16 +484,15 @@ async def post_channel_info_delayed(
     # seasonal_hashtag kept if you want to append it elsewhere
     seasonal_hashtag = f"#{season_tag}Ongoing{year_tag}"
 
-    # --- Build header (uses corrected audio label) ---
+        # --- Build header (uses corrected audio label) ---
     header = (
         f"<blockquote><b>{title}</b></blockquote>\n"
         f"──────────────────────\n"
-        f"<b>➥ 𝐒ᴇᴀsᴏɴ: {season_number}</b>\n"
-        f"<b>➥ Episode: {str(episode).zfill(2)}</b>\n"
+        f"<b>➥ 𝐒ᴇᴀsᴏɴ: {season}</b>\n"
+        f"<b>➤ Episode: {str(episode).zfill(2)}</b>\n"
         f"<b>➤ Audio: Japanese [Hindi Sub]</b>\n"
         f"<b>➤ Quality: Multi Quality</b>\n"
         f"──────────────────────\n"
-        f"<blockquote>"
     )
 
     # --- Description shaping (trim to Telegram limits) ---
