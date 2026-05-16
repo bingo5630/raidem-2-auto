@@ -231,11 +231,20 @@ class FFEncoder:
                 
                 temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
                 
-                # 🔥 FOOLPROOF RESOLUTION OVERRIDE LOGIC
-                # Ye original subtitle file ki script info ko force karke 1080p scale par fix kar dega.
+                # 🔥 FOOLPROOF RESOLUTION & NAME REMOVAL LOGIC
                 with open(self.sub_path, 'r', encoding='utf-8-sig', errors='ignore') as f:
                     ass_content = f.read()
                 
+                # 1. CHARACTER NAME REMOVER (Regex Filter)
+                # Ye logic dialogue ke text part mein se "Name:" ya "[Name]:" ko automatically kaat dega.
+                ass_content = re.sub(
+                    r'^(Dialogue:\s*(?:[^,]*,){9})\s*(?:\[.*?\]\s*:?|[\w\s-]{2,15}\s*:)\s*', 
+                    r'\1', 
+                    ass_content, 
+                    flags=re.MULTILINE
+                )
+
+                # 2. RESOLUTION OVERRIDE
                 if 'PlayResY:' in ass_content:
                     ass_content = re.sub(r'PlayResX:\s*\d+', 'PlayResX: 1920', ass_content)
                     ass_content = re.sub(r'PlayResY:\s*\d+', 'PlayResY: 1080', ass_content)
@@ -245,9 +254,9 @@ class FFEncoder:
                 with open(temp_sub_path, 'w', encoding='utf-8') as f:
                     f.write(ass_content)
 
-                # Ab humara base resolution 1080p lock ho gaya hai, toh hum Size ko 58 pe set kar sakte hain
-                # Bold=1 se text thick hoga, MarginV=45 se text border se thoda upar readable position par aayega
-                force_style = "FontName=AHS BestFont,FontSize=58,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,BackColour=&H80000000,Bold=1,Italic=0,Outline=2,Shadow=1,BorderStyle=1,MarginV=45,Alignment=2,WrapStyle=1"
+                # 3. FONT SIZE & STYLE UPDATE
+                # Size ko 58 se badha kar seedha 76 kar diya hai! MarginV=55 text ko theek position pe rakhega.
+                force_style = "FontName=AHS BestFont,FontSize=76,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,BackColour=&H80000000,Bold=1,Italic=0,Outline=2,Shadow=1,BorderStyle=1,MarginV=55,Alignment=2,WrapStyle=1"
                 
                 subtitle_filter = f"subtitles='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
 
