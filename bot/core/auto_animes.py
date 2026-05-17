@@ -126,7 +126,6 @@ async def get_animes(name, torrent, force=False):
             if anime_title not in ani_cache["unmapped"]:
                 await log_unmapped_anime(anime_title)
                 ani_cache["unmapped"].add(anime_title)
-            # Ignore the torrent if no mapped channel_id is found
             return
 
         if ani_id not in ani_cache['ongoing']:
@@ -209,24 +208,27 @@ async def get_animes(name, torrent, force=False):
             )
             await rep.report("Starting Subtitle Extraction...", "info")
 
-            # Temporary subtitle paths
             from bot.utils.translator import translate_subtitle_file
 
             sub_path = ospath.join("encode", f"temp_sub_extract_{t.time()}.ass")
             translated_sub_path = None
 
-            # Extract .ass subtitles
             dl_file = dl
             if ospath.isdir(dl):
                 files = glob.glob(ospath.join(dl, "*.mkv")) + glob.glob(ospath.join(dl, "*.mp4"))
                 if files: dl_file = files[0]
 
-            proc = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-i", dl_file, "-map", "0:s:0?", sub_path)
+            # 🔥 SMART EXTRACTION LOGIC: ENGLISH PRIORITY
+            proc = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-i", dl_file, "-map", "0:s:m:language:eng?", sub_path)
             await proc.wait()
+
+            if not ospath.exists(sub_path) or ospath.getsize(sub_path) == 0:
+                await rep.report("No 'eng' tag found in subtitles. Falling back to the default first track...", "info")
+                proc = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-i", dl_file, "-map", "0:s:0?", sub_path)
+                await proc.wait()
 
             await rep.report("Starting Translation...", "info")
 
-            # Callback to update UI during translation
             async def translation_ui_update(msg):
                 formatted_name = f"“{name.strip()}”"
                 await safe_telegram_call(
@@ -235,17 +237,15 @@ async def get_animes(name, torrent, force=False):
                     f"> ᴀɴɪᴍᴇ ɴᴀᴍᴇ : {stylize_quote(formatted_name)}\n\n{msg}"
                 )
 
-            # Get Groq API Keys for translation
-            api_pool = await db.get_groq_api_pool("global_groq_pool") # Using the fixed pool ID
+            api_pool = await db.get_groq_api_pool("global_groq_pool") 
 
-            if ospath.exists(sub_path):
+            if ospath.exists(sub_path) and ospath.getsize(sub_path) > 0:
                 translated_sub_path = await translate_subtitle_file(sub_path, api_pool, update_callback=translation_ui_update)
             else:
                 await rep.report("No Subtitles Found or Extraction Failed.", "warning")
 
             uploaded_links = {}
 
-            # Phase 3: Sequential Master Encode (1080p), Compress (720p, 480p) & Upload
             encoding_flow = [
                 {'qual': '1080', 'is_master': True},
                 {'qual': '720', 'is_master': False},
@@ -270,9 +270,7 @@ async def get_animes(name, torrent, force=False):
                 await rep.report(f"Starting Encode for {qual}p...", "info")
 
                 try:
-                    # Cascade Pipeline: Use the newly generated 1080p master for 720p/480p encoding.
                     input_file = out_paths.get('1080') if not is_master else master_dl_path
-
                     encoder = FFEncoder(stat_msg, input_file, filename, qual, is_master=is_master, sub_path=translated_sub_path, poster_url=actual_poster_url)
                     out_path = await encoder.start_encode()
                     out_paths[qual] = out_path
@@ -292,11 +290,9 @@ async def get_animes(name, torrent, force=False):
                 await asyncio.sleep(1.5)
 
                 try:
-                    # Do not delete the file yet if we still need it for cascade encoding
                     delete_after = True
                     if qual in ['1080', '720']:
                         delete_after = False
-
                     msg = await TgUploader(stat_msg, poster_url=actual_poster_url).upload(out_path, qual, delete_after=delete_after)
                 except Exception as e:
                     await rep.report(f"Upload Error ({qual}p): {e}", "error")
@@ -314,7 +310,6 @@ async def get_animes(name, torrent, force=False):
                 await db.saveAnime(ani_id, ep_no, qual, post_id)
                 bot_loop.create_task(extra_utils(msg_id, out_path))
 
-                # Phase 4: Update Original Post Buttons Dynamically After Every Quality
                 if post_msg and uploaded_links:
                     btns = [
                         [
@@ -325,8 +320,6 @@ async def get_animes(name, torrent, force=False):
                             InlineKeyboardButton("✨1080p✨", url=uploaded_links.get('1080', ''))
                         ]
                     ]
-
-                    # Filter out buttons with empty URLs
                     filtered_btns = []
                     for row in btns:
                         filtered_row = [btn for btn in row if btn.url]
@@ -344,7 +337,6 @@ async def get_animes(name, torrent, force=False):
                 ffLock.release()
             await safe_telegram_call(stat_msg.delete)
 
-            # Final Cleanup: Remove original torrent and all generated encoded files
             if ospath.isdir(dl):
                 shutil.rmtree(dl, ignore_errors=True)
             else:
@@ -363,14 +355,12 @@ async def get_animes(name, torrent, force=False):
             if ospath.exists(sub_path): await aioremove(sub_path)
             if translated_sub_path and ospath.exists(translated_sub_path): await aioremove(translated_sub_path)
 
-            # Remove any lingering temp subtitle files from encode dir
             for temp_sub in glob.glob("encode/temp_sub_*.ass"):
                 try:
                     await aioremove(temp_sub)
                 except Exception:
                     pass
 
-            # Remove any lingering compressed thumbnails
             if ospath.exists("compressed_thumb.jpg"):
                 try:
                     await aioremove("compressed_thumb.jpg")
@@ -384,6 +374,7 @@ async def get_animes(name, torrent, force=False):
         if ffLock.locked():
             ffLock.release()
 
+
 async def post_channel_info_delayed(
     anime_name: str,
     post_id: int,
@@ -392,13 +383,12 @@ async def post_channel_info_delayed(
     *,
     source: str | None = None
 ):
-
+    # ✅ RESTORED: Tumhara 35 minutes (2100 seconds) ka intentional delay wapas daal diya hai!
     await asyncio.sleep(2100)
 
     anime_name = (anime_name or "").lower().strip()
     anime_title = anime_name
 
-    # --- Resolve posting channels ---
     channel_id_main = await db.get_main_channel() or Var.MAIN_CHANNEL
     channel_id = await db.get_anime_channel(anime_name)
     if channel_id == Var.MAIN_CHANNEL:
@@ -407,7 +397,6 @@ async def post_channel_info_delayed(
         print(f"[INFO] No specific channel found for anime: {anime_name}")
         return
 
-    # --- Get chat & invite link for "Watch" button ---
     try:
         chat = await bot.get_chat(channel_id)
     except Exception as e:
@@ -424,30 +413,20 @@ async def post_channel_info_delayed(
         print(f"[ERROR] Failed to create invite link: {e}")
         invite_link = await db.get_anime_invite(anime_name)
 
-    # --- AniList metadata loader ---
     ani = TextEditor(anime_name)
     await ani.load_anilist()
 
-    # Use the torrent/file name for parsing so we catch [Dual]/Eng+Jap etc.
-    # (This also sets episode/quality/audio/season onto ani.pdata)
     parse_source = source or anime_name
     await ani.extract_metadata(parse_source)
 
-    # ---------- Inbuilt audio inference (robust) ----------
-    # Prefer TextEditor.get_audio (normalizes), but add a hardened fallback.
     async def infer_audio_label_from_filename(filename: str) -> tuple[str, str]:
-        
         fn = (filename or "").lower()
-
-        # "dual audio", "dual", "2 audio", "two audio", eng+jap, jp+eng
         is_dual = any([
             re.search(r"\bdual(?:[-_\s]?audio)?\b", fn),
             re.search(r"\b(?:2\s*audio|two\s*audio)\b", fn),
             re.search(r"\b(?:eng(?:lish)?)[^a-z0-9]{0,6}(?:jap(?:anese)?|jp)\b", fn),
             re.search(r"\b(?:jap(?:anese)?|jp)[^a-z0-9]{0,6}(?:eng(?:lish)?)\b", fn),
         ])
-
-        # "multi audio", "multi", "3 audio", "tri-audio"
         is_multi = any([
             re.search(r"\bmulti(?:[-_\s]?audio)?\b", fn),
             re.search(r"\b(?:3\s*audio|tri[-_\s]*audio)\b", fn),
@@ -458,33 +437,24 @@ async def post_channel_info_delayed(
         if is_dual:
             return "dual", "Dual Audio"
 
-        # "esub/esubs/sub/subbed/jap/japanese" -> sub
         if any(k in fn for k in ["esub", "esubs", "subbed", "sub", "jap", "japanese"]):
             return "sub", "Japanese (Esubs)"
 
-        # Safe default
         return "sub", "Japanese (Esubs)"
 
-    # Try your built-in normalizer first:
     try:
         audio_label = await ani.get_audio(filename=parse_source, return_label=True)
-        # Also capture machine code for potential logic, though you only need the label for display
         audio_code = (await ani.get_audio(filename=parse_source, return_label=False)) or "sub"
     except Exception:
         audio_code, audio_label = await infer_audio_label_from_filename(parse_source)
 
-    # Quality from parsed metadata (default if missing)
     quality = (ani.pdata.get("quality") or "720p")
-
-    # --- Title & season tags ---
     title_data = ani.adata.get("title", {})
     title = title_data.get("english") or title_data.get("romaji") or title_data.get("native") or "Unknown Title"
     season_tag = (ani.adata.get("season") or "Season").title()
     year_tag = str(ani.adata.get("seasonYear") or "2025")
-    # seasonal_hashtag kept if you want to append it elsewhere
     seasonal_hashtag = f"#{season_tag}Ongoing{year_tag}"
 
-        # --- Build header (uses corrected audio label) ---
     header = (
         f"<blockquote><b>{title}</b></blockquote>\n"
         f"──────────────────────\n"
@@ -495,7 +465,6 @@ async def post_channel_info_delayed(
         f"──────────────────────\n"
     )
 
-    # --- Description shaping (trim to Telegram limits) ---
     desc = (ani.adata.get("description") or "").replace("<br>", "").replace("\n", " ").strip()
     desc = re.sub(r"Source:.*?", "", desc).strip()
     parts = re.split(r'[.!?]\s+', desc, maxsplit=1)
@@ -537,7 +506,6 @@ async def post_channel_info_delayed(
                     print(f"[ERROR] Post Failed: {e}")
                     return
 
-    # --- Fallback with minimal caption if trimming loop failed ---
     if not success:
         print("[WARN] Using minimal fallback caption")
         minimal_caption = header + quote_text
@@ -550,7 +518,7 @@ async def post_channel_info_delayed(
                 photo=poster,
                 caption=minimal_caption,
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("• ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ᴡᴀᴛᴄʜ •", url=invite_link)
+                    InlineKeyboardButton("• ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ᴡᴀ打•", url=invite_link)
                 ]])
             )
             print(f"[INFO] Successfully posted fallback info for {anime_name} (audio={audio_code})")
