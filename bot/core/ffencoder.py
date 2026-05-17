@@ -127,7 +127,6 @@ class FFEncoder:
             local_path = ospath.join("encode", filename)
             valid_wm_path = ospath.join("encode", "valid_watermark.png")
 
-            # 🚀 SMART DOWNLOADER: Web Link ya Telegram File ID
             if url.startswith("http://") or url.startswith("https://"):
                 timeout = aiohttp.ClientTimeout(total=30)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -144,7 +143,6 @@ class FFEncoder:
                 from bot import bot
                 await bot.download_media(url, file_name=local_path)
 
-            # 🔥 VERIFY IMAGE & REMOVE SOLID BACKGROUND (White/Black)
             if ospath.exists(local_path) and ospath.getsize(local_path) > 0:
                 from PIL import Image
                 try:
@@ -154,9 +152,9 @@ class FFEncoder:
                     newData = []
                     for item in data:
                         if item[0] > 240 and item[1] > 240 and item[2] > 240:
-                            newData.append((255, 255, 255, 0)) # Transparent
+                            newData.append((255, 255, 255, 0))
                         elif item[0] < 15 and item[1] < 15 and item[2] < 15:
-                            newData.append((0, 0, 0, 0)) # Transparent
+                            newData.append((0, 0, 0, 0))
                         else:
                             newData.append(item)
 
@@ -231,12 +229,9 @@ class FFEncoder:
                 
                 temp_sub_path = ospath.join("encode", f"temp_sub_{t.time()}.ass")
                 
-                # 🔥 FOOLPROOF RESOLUTION & NAME REMOVAL LOGIC
                 with open(self.sub_path, 'r', encoding='utf-8-sig', errors='ignore') as f:
                     ass_content = f.read()
                 
-                # 1. CHARACTER NAME REMOVER (Regex Filter)
-                # Ye logic dialogue ke text part mein se "Name:" ya "[Name]:" ko automatically kaat dega.
                 ass_content = re.sub(
                     r'^(Dialogue:\s*(?:[^,]*,){9})\s*(?:\[.*?\]\s*:?|[\w\s-]{2,15}\s*:)\s*', 
                     r'\1', 
@@ -244,7 +239,6 @@ class FFEncoder:
                     flags=re.MULTILINE
                 )
 
-                # 2. RESOLUTION OVERRIDE
                 if 'PlayResY:' in ass_content:
                     ass_content = re.sub(r'PlayResX:\s*\d+', 'PlayResX: 1920', ass_content)
                     ass_content = re.sub(r'PlayResY:\s*\d+', 'PlayResY: 1080', ass_content)
@@ -254,9 +248,8 @@ class FFEncoder:
                 with open(temp_sub_path, 'w', encoding='utf-8') as f:
                     f.write(ass_content)
 
-                # 3. FONT SIZE & STYLE UPDATE
-                # Size ko 58 se badha kar seedha 76 kar diya hai! MarginV=55 text ko theek position pe rakhega.
-                force_style = "FontName=AHS BestFont,FontSize=76,PrimaryColour=&H00FFFFFF,OutlineColour=&H4D000000,ShadowColour=&H4D000000,BackColour=&H80000000,Bold=1,Italic=0,Outline=2,Shadow=1,BorderStyle=1,MarginV=55,Alignment=2,WrapStyle=1"
+                # 🔥 One Piece Style Subtitles Added Back!
+                force_style = "FontName=AHS BestFont,FontSize=76,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H00000000,Bold=1,Italic=0,Outline=2.5,Shadow=2.5,BorderStyle=1,MarginV=55,Alignment=2,WrapStyle=1"
                 
                 subtitle_filter = f"subtitles='{temp_sub_path}':fontsdir='{fontsdir}':force_style='{force_style}'"
 
@@ -284,11 +277,17 @@ class FFEncoder:
                 ffcode += " -map 0:v -map 0:a -sn -map_metadata -1"
                 ffcode += f" {ffargs[self.__qual]} "
 
+        # 🔥 MX PLAYER AUDIO TRACK & GLOBAL METADATA ADDED HERE
         ffcode += (
-            " -metadata title='By HellFire_Academy' "
-            "-metadata author='By HellFire_Academy' "
-            "-metadata:s:a title='By HellFire_Academy' "
-            "-metadata:s:v title='By HellFire_Academy' "
+            " -metadata title='Encoded By @HellFire_Academy_Official' "
+            " -metadata author='@HellFire_Academy_Official' "
+            " -metadata artist='@HellFire_Academy_Official' "
+            " -metadata copyright='@HellFire_Academy_Official' "
+            " -metadata:s:v:0 title='Video By @HellFire_Academy_Official' "
+            " -metadata:s:a:0 title='By @HellFire_Academy_Official' "
+            " -metadata:s:a:0 language='jpn' "
+            " -metadata:s:s:0 title='Sub By @HellFire_Academy_Official' "
+            " -metadata:s:s:0 language='eng' "
         )
 
         ffcode += f" '{out_npath}'"
