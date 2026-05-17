@@ -383,7 +383,7 @@ async def post_channel_info_delayed(
     *,
     source: str | None = None
 ):
-    # ✅ RESTORED: Tumhara 35 minutes (2100 seconds) ka intentional delay wapas daal diya hai!
+    # ✅ 35 minutes (2100 seconds) ka intentional delay 
     await asyncio.sleep(2100)
 
     anime_name = (anime_name or "").lower().strip()
@@ -518,7 +518,7 @@ async def post_channel_info_delayed(
                 photo=poster,
                 caption=minimal_caption,
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("• ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ᴡᴀ打•", url=invite_link)
+                    InlineKeyboardButton("• ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ᴡᴀᴛᴄʜ •", url=invite_link)
                 ]])
             )
             print(f"[INFO] Successfully posted fallback info for {anime_name} (audio={audio_code})")
